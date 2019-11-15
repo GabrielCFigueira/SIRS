@@ -1,6 +1,19 @@
 import socket
 import sys
 from os import urandom
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+import pdb
+
+chosen_hash = hashes.SHA512()
+hasher = hashes.Hash(chosen_hash, default_backend())
+
+
+pubkey = b''
+with open('pub_key', 'rb') as keyfile:
+    pubkey = load_pem_public_key(keyfile.read(), default_backend())
 
 SIG_SIZE = 64
 
@@ -19,8 +32,15 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
     info = sock.recv(32)           # 32 chars should be enough
     info_sig = sock.recv(SIG_SIZE) # probably 64 bytes
 
-    # TODO: verify signature
+    hasher.update(info)
+    digest = hasher.finalize()
 
+    #pdb.set_trace()
+
+    pubkey.verify(info_sig, digest) #, chosen_hash)
+    print('Success!!!!!')
+
+    """
     latest_version, size = [int(s) for s in str(info, 'ascii').split('|')]
     current_version = read_file()
 
@@ -48,5 +68,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         raise
         # or return False, True
 
-
     return True, True
+    """
+    sock.close()

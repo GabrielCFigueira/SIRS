@@ -1,8 +1,11 @@
 import socketserver
 import logging
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import utils, padding
-
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+import pdb
 
 logging.basicConfig(
     format='%(name)s [%(levelname)s]\t%(asctime)s - %(message)s',
@@ -11,6 +14,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger('my_name')
 
+private_key = b''
+with open('priv_key', 'rb') as keyfile:
+    private_key = load_pem_private_key(keyfile.read(), None, default_backend())
+
+chosen_hash = hashes.SHA512()
 
 class UP_Server(socketserver.BaseRequestHandler):
     """
@@ -35,11 +43,11 @@ class UP_Server(socketserver.BaseRequestHandler):
                                         query))
 
 
-            choosen_hash = hashes.SHA256()
-            hasher = hashes.Hash(choosen_hash, default_backend())
+            hasher = hashes.Hash(chosen_hash, default_backend())
 
             if query[0] == 'check':
-                response = self.version = get_latest_for(query[1])
+                response = self.version = "ola01234567890123456789012345678" #get_latest_for(query[1])
+                #pdb.set_trace()
                 response = bytes(response, 'ascii')
             elif query[0] == 'download_latest':
                 if not getattr(self, 'version', False):
@@ -71,14 +79,8 @@ class UP_Server(socketserver.BaseRequestHandler):
                                             self.client_address[0]))
             hasher.update(response)
             digest = hasher.finalize()
-            sig = private_key.sign(
-                    digest,
-                    padding.PSS(
-                        mgf=padding.MGF1(hashes.SHA256()),
-                        salt_length=padding.PSS.MAX_LENGTH
-                    ),
-                    utils.Prehashed(choosen_hash)
-                )
+            sig = private_key.sign(digest) #, ec.ECDSA(utils.Prehashed(chosen_hash)))
+            print(sig)
             self.request.sendall(sig)
 
 
