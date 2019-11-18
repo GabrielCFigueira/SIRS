@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import utils, padding
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 import pdb
+import os
 
 logging.basicConfig(
     format='%(name)s [%(levelname)s]\t%(asctime)s - %(message)s',
@@ -19,6 +20,12 @@ with open('priv_key', 'rb') as keyfile:
     private_key = load_pem_private_key(keyfile.read(), None, default_backend())
 
 chosen_hash = hashes.SHA512()
+
+def get_latest_version(id_name):
+    return "ola01234567890123456789012345678"
+
+def get_patch_file(id_name, version):
+    return 'test.patch'
 
 class UP_Server(socketserver.BaseRequestHandler):
     """
@@ -38,7 +45,7 @@ class UP_Server(socketserver.BaseRequestHandler):
             query = self.request.recv(16).decode('utf-8') \
                                           .strip() \
                                           .split("|")
-            logger.debug("{}: Got {} on the pipe".format(
+            logger.info("{}: Got {} on the pipe".format(
                                         self.client_address[0],
                                         query))
 
@@ -46,14 +53,16 @@ class UP_Server(socketserver.BaseRequestHandler):
             hasher = hashes.Hash(chosen_hash, default_backend())
 
             if query[0] == 'check':
-                response = self.version = "ola01234567890123456789012345678" #get_latest_for(query[1])
+                response = self.version = get_latest_version(query[1])
                 #pdb.set_trace()
                 response = bytes(response, 'ascii')
             elif query[0] == 'download_latest':
                 if not getattr(self, 'version', False):
                     response = b'error:mischeck|'
                 else:
-                    filename = get_patch_for(self.version)
+                    print('Got in')
+                    response = None
+                    filename = get_patch_file('test_name', self.version)
                     with open(filename, 'rb') as infile:
                         nonce = self.request.recv(16)
                         size = (os.stat(filename).st_size).to_bytes(8, 'big')
@@ -71,16 +80,16 @@ class UP_Server(socketserver.BaseRequestHandler):
                                             self.client_address[0],
                                             response))
 
+                hasher.update(response)
                 self.request.sendall(response)
 
 
 
             logger.info("{}: Generating and sending sig".format(
                                             self.client_address[0]))
-            hasher.update(response)
             digest = hasher.finalize()
+            print(digest)
             sig = private_key.sign(digest) #, ec.ECDSA(utils.Prehashed(chosen_hash)))
-            print(sig)
             self.request.sendall(sig)
 
 
