@@ -1,7 +1,7 @@
 
-my_name = 'Anakin'
+my_name = 'undefined'
 
 # Should be different for Anakin and Zeus
 
 def deal_with_it(query):
-    return query[1].upper()
+    return 'Not dealing with it {}'.format(query)
