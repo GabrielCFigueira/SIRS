@@ -14,24 +14,34 @@ class GenericDummy(Process):
         self.interval = 2 # can be configured
         self.lock = threading.Lock()
         self.port = 5000
-        self.state = 0
-        self.sock = 0
+        self.state = self.update_state()
+        self.sock = None
 
     def update_state(self):
         pass
+
+    def set_state(self, _new):
+        # only implement if you want to allow direct modification
+        pass
+
 
     def get_state(self):
         with self.lock:
             return self.state
 
-    def set_state(self, _new):
-        pass
-
     def thread_update(self):
         while True:
             time.sleep(self.interval)
             with self.lock:
-                self.state = self.update_state()
+                new_state = self.update_state()
+                print("Updating state from {} to {}".format(self.state, new_state))
+                self.state = new_state
+
+    def set_a_new_state_carefully(self, new):
+        with self.lock:
+            new_state = self.set_state(new)
+            print("Changing state from {} to {}".format(self.state, new_state))
+            self.state = new_state
 
 
     def run(self):
@@ -51,7 +61,7 @@ class GenericDummy(Process):
                     elif query[0] == 'kill':
                         sys.exit(0)
                     elif query[0] == 'set':
-                        self.set_state(query[1])
+                        self.set_a_new_state_carefully(query[1])
 
 
 if __name__ == '__main__':

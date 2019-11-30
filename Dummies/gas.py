@@ -1,16 +1,33 @@
 import random
-import time
 
-time.sleep(2)
-i = random.randint(0, 100)
+import GenericDummy
 
-if(i<=20):
-    state = "ADD (0%-20%)"
-elif(i>=90):
-    state = "FULL (90%-100%)"
-else:
-    state = "NORMAL (21%-8%9)"
+class Gas(GenericDummy.GenericDummy):
+    def __init__(self):
+        super(Gas, self).__init__()
+        self.version = 'ola01234567890132456798013245678'
+        self.id = '0123465789'
+        self.name = 'gas'
+        self.port = 5002
 
-print(f"Gas: {i}% | State: {state}")
+    def update_state(self):
+        i = random.randint(0, 100)
+
+        if i <= 20:
+            state = "ADD (0%-20%)"
+        elif i >= 90:
+            state = "FULL (90%-100%)"
+        else:
+            state = "NORMAL (21%-89%)"
+
+        #print("Gas: {}% | State: {}".format(i, state))
+        return state
+
+
+
+if __name__ == '__main__':
+    g1 = Gas()
+    g1.start()
+    g1.join()
 
 # ADD (0%-20%) | NORMAL (21%-89%) | FULL (90%-100%)
