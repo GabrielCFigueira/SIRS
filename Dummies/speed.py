@@ -5,8 +5,8 @@ import GenericDummy
 class Speed(GenericDummy.GenericDummy):
     def __init__(self):
         super(Speed, self).__init__()
-        self.version = 'ola01234567890132456798013245678'
-        self.id = '0123465789'
+        self.version = '00001010101000000000000000000000'
+        self.id = 'spdsnszeus'
         self.name = 'speed'
         self.port = 5003
 

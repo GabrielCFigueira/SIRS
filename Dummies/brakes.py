@@ -4,8 +4,8 @@ class Brakes(GenericDummy.GenericDummy):
     def __init__(self):
         self.state = 'on' #hack, do not do try this at home
         super(Brakes, self).__init__()
-        self.version = 'ola01234567890132456798013245678'
-        self.id = '0123465789'
+        self.version = '00100000000000000000000000000000'
+        self.id = 'brksnszeus'
         self.name = 'brakes'
         self.port = 5011
 

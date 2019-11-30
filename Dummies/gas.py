@@ -5,8 +5,8 @@ import GenericDummy
 class Gas(GenericDummy.GenericDummy):
     def __init__(self):
         super(Gas, self).__init__()
-        self.version = 'ola01234567890132456798013245678'
-        self.id = '0123465789'
+        self.version = '01000000000001010000000000000000'
+        self.id = 'gassnszeus'
         self.name = 'gas'
         self.port = 5002
 

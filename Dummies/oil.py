@@ -5,8 +5,8 @@ import GenericDummy
 class Oil(GenericDummy.GenericDummy):
     def __init__(self):
         super(Oil, self).__init__()
-        self.version = 'ola01234567890132456798013245678'
-        self.id = '0123465789'
+        self.version = '00000000000000000000000000000001'
+        self.id = 'oilsnszeus'
         self.name = 'oil'
         self.port = 5001
 
