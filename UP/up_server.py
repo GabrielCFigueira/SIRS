@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import utils, padding
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from up_versions import get_latest_version, get_patch_file
 import pdb
 import os
 
@@ -21,11 +22,6 @@ with open('priv_key', 'rb') as keyfile:
 
 chosen_hash = hashes.SHA512()
 
-def get_latest_version(id_name):
-    return "ola01234567890123456789012345678"
-
-def get_patch_file(id_name, version):
-    return 'test.patch'
 
 class UP_Server(socketserver.BaseRequestHandler):
     """
@@ -53,6 +49,7 @@ class UP_Server(socketserver.BaseRequestHandler):
             hasher = hashes.Hash(chosen_hash, default_backend())
 
             if query[0] == 'check':
+                self.name = query[1]
                 response = self.version = get_latest_version(query[1])
                 #pdb.set_trace()
                 response = bytes(response, 'ascii')
@@ -60,9 +57,8 @@ class UP_Server(socketserver.BaseRequestHandler):
                 if not getattr(self, 'version', False):
                     response = b'error:mischeck|'
                 else:
-                    print('Got in')
                     response = None
-                    filename = get_patch_file('test_name', self.version)
+                    filename = get_patch_file(self.name, self.version)
                     with open(filename, 'rb') as infile:
                         nonce = self.request.recv(16)
                         size = (os.stat(filename).st_size).to_bytes(8, 'big')
@@ -73,6 +69,14 @@ class UP_Server(socketserver.BaseRequestHandler):
                             hasher.update(chunk)
                             self.request.sendall(chunk)
                             chunk = infile.read(4096)
+
+            elif query[0] == 'error':
+                logger.warning("Client error trying to update component {}".format(query[1]))
+                return
+            elif query[0] == 'allok':
+                logger.info("Successful update on component {}".format(query[1]))
+                return
+
 
 
             if response:
@@ -88,7 +92,7 @@ class UP_Server(socketserver.BaseRequestHandler):
             logger.info("{}: Generating and sending sig".format(
                                             self.client_address[0]))
             digest = hasher.finalize()
-            print(digest)
+            print('Signature:', digest)
             sig = private_key.sign(digest) #, ec.ECDSA(utils.Prehashed(chosen_hash)))
             self.request.sendall(sig)
 

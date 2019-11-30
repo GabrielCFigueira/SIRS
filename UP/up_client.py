@@ -8,6 +8,8 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from bsdiff4 import file_patch
 import pdb
 
+#TODO tothink: use name or just uid? still need to kill a process, and to know a filename from uid
+
 chosen_hash = hashes.SHA512()
 hasher = hashes.Hash(chosen_hash, default_backend())
 
@@ -36,9 +38,11 @@ def apply_patch(target, patch_file=None):
 
 # TODO
 def get_installed_version(target_name):
+# talk to dummy
     return b''
 
 def update_installed_version(target_name, new_version):
+# maybe each dummy knows itself
     pass
 
 # Architect address
@@ -71,7 +75,6 @@ def try_update(target_name):
             return True, False # sucess, no update needed
 
         nonce = urandom(16) # 128 bits
-        print(nonce)
 
         sock.sendall(b'download_latest|' + nonce)
 
@@ -96,26 +99,24 @@ def try_update(target_name):
 
         digest = hasher.finalize()
 
-        print(digest)
-
         if nonce != received_nonce:
             raise ValueError('Wrong nonce')
-
         pubkey.verify(patch_sig, digest)
 
 
         try:
             apply_patch(target_name)
             update_installed_version(target_name, latest_version)
+            sock.sendall(b'allok|' + identifier)
         except:
-            sock.sendall(b'error|install')
+            sock.sendall(b'error|' + identifier)
             raise
             # or return False, True
         finally:
             remove(target_name+'.patch')
+            sock.close()
 
         return True, True
-        sock.close()
 
 if __name__ == '__main__':
     try_update('original')
