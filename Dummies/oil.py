@@ -26,6 +26,4 @@ class Oil(GenericDummy.GenericDummy):
 
 
 if __name__ == '__main__':
-    g1 = Oil()
-    g1.start()
-    g1.join()
+    GenericDummy.start_the_dummy(Oil)

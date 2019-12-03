@@ -26,8 +26,6 @@ class Gas(GenericDummy.GenericDummy):
 
 
 if __name__ == '__main__':
-    g1 = Gas()
-    g1.start()
-    g1.join()
+    GenericDummy.start_the_dummy(Gas)
 
 # ADD (0%-20%) | NORMAL (21%-89%) | FULL (90%-100%)

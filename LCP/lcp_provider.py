@@ -47,8 +47,7 @@ class LCP_Provider(socketserver.BaseRequestHandler):
             self.request.sendall(bytes(response + '\n', 'utf-8'))
 
 
-
-if __name__ == "__main__":
+def run():
     HOST, PORT = "localhost", 5679
 
     # Create the server, binding to localhost on port 9999
@@ -57,3 +56,6 @@ if __name__ == "__main__":
         # interrupt the program with Ctrl-C
         logger.info('Ready to serve')
         server.serve_forever()
+
+if __name__ == "__main__":
+    run()

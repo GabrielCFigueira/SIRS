@@ -18,6 +18,4 @@ class Speed(GenericDummy.GenericDummy):
 
 
 if __name__ == '__main__':
-    g1 = Speed()
-    g1.start()
-    g1.join()
+    GenericDummy.start_the_dummy(Speed)

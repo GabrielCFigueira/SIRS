@@ -18,6 +18,4 @@ class Brakes(GenericDummy.GenericDummy):
 
 
 if __name__ == '__main__':
-    g1 = Brakes()
-    g1.start()
-    g1.join()
+    GenericDummy.start_the_dummy(Brakes)

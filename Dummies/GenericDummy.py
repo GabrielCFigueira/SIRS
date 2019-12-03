@@ -1,4 +1,6 @@
 import time
+import os
+import signal
 from multiprocessing import Process
 import logging
 import socket
@@ -10,6 +12,8 @@ logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 class GenericDummy(Process):
     def __init__(self):
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
         super(GenericDummy, self).__init__()
         self.interval = 2 # can be configured
         self.lock = threading.Lock()
@@ -45,8 +49,8 @@ class GenericDummy(Process):
 
 
     def run(self):
-        state_updater = threading.Thread(target=self.thread_update, args=[])
-        state_updater.daemon = True
+        state_updater = threading.Thread(target=self.thread_update, args=[],
+                                         daemon=True)
         state_updater.start()
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as self.sock:
 
@@ -63,8 +67,26 @@ class GenericDummy(Process):
                     elif query[0] == 'set':
                         self.set_a_new_state_carefully(query[1])
 
+def start_the_dummy(DummyClass):
+
+    def forward_signal(dummy_process):
+        def handler(signum, _frame):
+            print('{} got inside handler'.format(os.getpid()))
+            print('{} sending {} to {}'.format(os.getpid(), signum,
+                                               dummy_process.pid))
+            os.kill(dummy_process.pid, signum)
+
+        return handler
+
+
+    g1 = DummyClass()
+    g1.start()
+    the_handler = forward_signal(g1)
+    signal.signal(signal.SIGTERM, the_handler)
+    signal.signal(signal.SIGINT, the_handler)
+
+    g1.join()
+
 
 if __name__ == '__main__':
-    g1 = GenericDummy()
-    g1.start()
-    g1.join()
+    start_the_dummy(GenericDummy)
