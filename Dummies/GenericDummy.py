@@ -61,11 +61,19 @@ class GenericDummy(Process):
                 while True:
                     query = conn.recv(16).decode('utf-8').rstrip().split('|')
                     if query[0] == 'read':
-                        conn.sendall(bytes(self.get_state(), 'ascii'))
+                        response = bytes(self.get_state(), 'ascii')
                     elif query[0] == 'kill':
+                        conn.sendall(b'ack')
                         sys.exit(0)
                     elif query[0] == 'set':
                         self.set_a_new_state_carefully(query[1])
+                        response = b'ack'
+                    elif hasattr(self, query[0]):
+                        response = bytes(str(getattr(self, query[0])), 'ascii')
+                    else:
+                        response = b'commanderror'
+
+                    conn.sendall(response)
 
 def start_the_dummy(DummyClass):
 

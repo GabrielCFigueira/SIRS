@@ -39,7 +39,7 @@ class LCP_Bridge(socketserver.BaseRequestHandler):
         while serve:
             raw_request = self.request.recv(256)
             try:
-                destination, command, opt = self.sanitize(raw_request)
+                destination, rest = self.sanitize(raw_request)
             except ValueError:
                 logger.info("{}: got invalid request, shutting it down".format(
                                                                 self.client_address[0]))
@@ -49,16 +49,16 @@ class LCP_Bridge(socketserver.BaseRequestHandler):
                 self.request.sendall(bytes("Invalid command: ", 'utf-8') + raw_request)
                 return # For cleanup
 
-            logger.debug("{}: request {} parsed to '{} {}'".format(
+            logger.debug("{}: request {} is {}".format(
                                                                 self.client_address[0],
                                                                 raw_request,
-                                                                command, opt))
+                                                                rest))
 
             logger.info("{}: Got request {} for {}".format(self.client_address[0],
-                                                            [command, opt],
+                                                            rest,
                                                             destination.getpeername()))
 
-            destination.sendall(bytes(command + '|' + opt + '\n', 'utf-8'))
+            destination.sendall(bytes(rest, 'utf-8'))
             logger.info("{}: Forwarded request".format(self.client_address[0]))
             response = destination.recv(256)
             logger.info("{}: Forwarding response {}".format(self.client_address[0],
@@ -70,16 +70,16 @@ class LCP_Bridge(socketserver.BaseRequestHandler):
     # TODO: bullet-proof this
 
         try:
-            command, opt = to_sanitize.decode('ascii').strip().split(' ')
+            dest, rest = to_sanitize.decode('ascii').strip().split('|', 1)
 
             # TODO: maybe invert logic and make it default zeus?
             dest = self.anakin
-            if command in ['motor', 'lock']:
-                dest = self.anakin #zeus
-            elif command == 'read' and opt in ['brake', 'gas', 'direction']:
-                dest = self.anakin #zeus
+#           if command in ['motor', 'lock']:
+#               dest = self.anakin #zeus
+#           elif command == 'read' and opt in ['brake', 'gas', 'direction']:
+#               dest = self.anakin #zeus
 
-            return dest, command, opt
+            return dest, rest
 
         except:
             raise ValueError("Invalid user command")

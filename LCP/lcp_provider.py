@@ -1,6 +1,7 @@
 import socketserver
 import logging
-from responsability import deal_with_it, my_name
+#from responsability import deal_with_it, my_name
+
 
 
 logging.basicConfig(
@@ -8,8 +9,6 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt='%d/%m/%Y %H:%M:%S'
 )
-logger = logging.getLogger(my_name)
-
 
 class LCP_Provider(socketserver.BaseRequestHandler):
     """
@@ -28,14 +27,12 @@ class LCP_Provider(socketserver.BaseRequestHandler):
 
         serve = True
         while serve:
-            query = self.request.recv(256).decode('utf-8') \
-                                          .strip() \
-                                          .split("|")
+            query = self.request.recv(256).decode('utf-8').strip()
             logger.info("{}: Got {} on the pipe".format(
                                         self.client_address[0],
                                         query))
 
-            if query[0] == 'quit':
+            if query == 'quit':
                 return
 
             response = deal_with_it(query)
@@ -44,11 +41,23 @@ class LCP_Provider(socketserver.BaseRequestHandler):
                                         self.client_address[0],
                                         response))
 
-            self.request.sendall(bytes(response + '\n', 'utf-8'))
+            self.request.sendall(response)
 
 
-def run():
+
+def deal_with_it(query):
+    if not pipe:
+        return b'No path to dummy'
+    pipe.send(query)
+    return pipe.recv()
+
+
+def run(name='Undefined', connection=None):
+    global logger, pipe
     HOST, PORT = "localhost", 5679
+
+    logger = logging.getLogger(name)
+    pipe = connection
 
     # Create the server, binding to localhost on port 9999
     with socketserver.TCPServer((HOST, PORT), LCP_Provider) as server:
