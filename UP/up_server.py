@@ -38,6 +38,7 @@ class UP_Server(socketserver.BaseRequestHandler):
         while serve:
             # TODO: sanitize first
             # TODO: if nonce, it won't split
+            #pdb.set_trace()
             query = self.request.recv(16).decode('utf-8') \
                                           .strip() \
                                           .split("|")
@@ -51,7 +52,6 @@ class UP_Server(socketserver.BaseRequestHandler):
             if query[0] == 'check':
                 self.name = query[1]
                 response = self.version = get_latest_version(query[1])
-                #pdb.set_trace()
                 response = bytes(response, 'ascii')
             elif query[0] == 'download_latest':
                 if not getattr(self, 'version', False):
@@ -72,10 +72,12 @@ class UP_Server(socketserver.BaseRequestHandler):
 
             elif query[0] == 'error':
                 logger.warning("Client error trying to update component {}".format(query[1]))
-                return
+                serve = False
+                response = False
             elif query[0] == 'allok':
                 logger.info("Successful update on component {}".format(query[1]))
-                return
+                serve = False
+                response = False
 
 
 

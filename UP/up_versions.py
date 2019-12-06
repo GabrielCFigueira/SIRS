@@ -1,9 +1,15 @@
 # kinda of configuration file
 # should be a little database?
 
-versions = {'0123456789': ["ola01234567890123456789012345678"]}
+versions = {
+    'oilsnszeus': ['00000000000000000000000000000001'],
+    'gassnszeus': ['01000000000001010000000000000000'],
+    'spdsnszeus': ['00001010101000000000000000000000'],
+    'brksnszeus': ['00100000000000000000000000000000']
+}
 
-patches = {('0123456789', 'ola01234567890123456789012345678'): 'test.patch'}
+patches = {
+}
 
 def get_latest_version(id_name):
     return versions[id_name][-1]

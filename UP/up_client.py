@@ -36,42 +36,30 @@ def apply_patch(target, patch_file=None):
         if path.exists(temp):
             remove(temp)
 
-# TODO
-def get_installed_version(target_name):
-# talk to dummy
-    return b''
-
-def update_installed_version(target_name, new_version):
-# maybe each dummy knows itself
-    pass
-
 # Architect address
 HOST, PORT = "localhost", 7890
 
-def try_update(target_name):
+def try_update(dummy_id, current_version, dummy_file):
     # Create a socket (SOCK_STREAM means a TCP socket)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         # Connect to server and send update version request
+        #pdb.set_trace()
         sock.connect((HOST, PORT))
         hasher = hashes.Hash(chosen_hash, default_backend())
 
-        identifier = b'0123456789' # TODO: make function to associate target_name to 10 byte id
-        sock.sendall(b'check|' + identifier)
+        sock.sendall(b'check|' + dummy_id)
 
-        info = sock.recv(32)           # 32 chars should be enough
+        latest_version = sock.recv(32) # 32 chars should be enough
         info_sig = sock.recv(SIG_SIZE) # probably 64 bytes
 
-        hasher.update(info)
+        hasher.update(latest_version)
         digest = hasher.finalize()
 
-        #pdb.set_trace()
 
         pubkey.verify(info_sig, digest)
 
-        latest_version = info
-        current_version = get_installed_version(target_name)
-
         if latest_version == current_version:
+            sock.sendall(b'allok|' + dummy_id)
             return True, False # sucess, no update needed
 
         nonce = urandom(16) # 128 bits
@@ -88,7 +76,7 @@ def try_update(target_name):
 
         size = int.from_bytes(bin_size, 'big')
 
-        with open(target_name+'.patch', 'wb') as outfile:
+        with open(dummy_file+'.patch', 'wb') as outfile:
             while size > 0:
                 chunk = sock.recv(CHUNK_SIZE if CHUNK_SIZE < size else size)
                 hasher.update(chunk)
@@ -105,18 +93,17 @@ def try_update(target_name):
 
 
         try:
-            apply_patch(target_name)
-            update_installed_version(target_name, latest_version)
-            sock.sendall(b'allok|' + identifier)
+            apply_patch(dummy_file)
+            sock.sendall(b'allok|' + dummy_id)
         except:
-            sock.sendall(b'error|' + identifier)
+            sock.sendall(b'error|' + dummy_id)
             raise
             # or return False, True
         finally:
-            remove(target_name+'.patch')
+            remove(dummy_file+'.patch')
             sock.close()
 
-        return True, True
+    return True, True
 
 if __name__ == '__main__':
-    try_update('original')
+    try_update('testtestte', 'testtesttesttesttesttesttesttest', 'original')

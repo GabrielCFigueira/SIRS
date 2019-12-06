@@ -2,7 +2,9 @@ import multiprocessing
 import threading
 import subprocess
 import socket
+import time
 from LCP import lcp_provider
+from UP import up_client
 
 my_dummies = {5001: ['python3', 'Dummies/oil.py'],
              5002: ['python3', 'Dummies/gas.py'],
@@ -11,6 +13,7 @@ my_dummies = {5001: ['python3', 'Dummies/oil.py'],
 
 #my_dummies = {0: ['python3', 'Dummies/GenericDummy.py']}
 
+UPDATE_SLEEP=3000
 
 def thread_dispatch_rcp(name_lock_sockets, my_pipe):
     while True:
@@ -32,6 +35,23 @@ def thread_dispatch_rcp(name_lock_sockets, my_pipe):
             response = s.recv(256)
         my_pipe.send(response)
 
+def thread_dummy_update(name_lock_sockets):
+    import pdb
+    while True:
+        for name, (lock, s) in name_lock_sockets.items():
+            with lock:
+                print("Updating {}".format(name))
+                #pdb.set_trace()
+                s.sendall(b'id')
+                dummy_id = s.recv(10)
+                s.sendall(b'version')
+                dummy_version = s.recv(32)
+                file_name = 'Dummies/{}.py'.format(name)
+                res = up_client.try_update(dummy_id,
+                                           dummy_version,
+                                           file_name)
+                print("Final result: {}".format(res))
+        time.sleep(UPDATE_SLEEP)
 
 if __name__ == '__main__':
 
@@ -54,7 +74,12 @@ if __name__ == '__main__':
         name = str(s.recv(10), 'ascii')
         dummies_lock_sockets[name] = (threading.Lock(), s)
 
-    print(dummies_lock_sockets)
+
+    # UP
+    up = threading.Thread(target=thread_dummy_update, args=[dummies_lock_sockets], daemon=True)
+    up.start()
+
+
     # RCP #todo refactorize this to use the thread for everything?
     rcp_pipe, other_side_pipe = multiprocessing.Pipe()
     rcp = multiprocessing.Process(name='rcp', target=lcp_provider.run,
@@ -63,6 +88,8 @@ if __name__ == '__main__':
     rcp_thread.start()
     rcp.start()
 
+
+    #time.sleep(5000)
     input("Press enter to kill them all")
 
     for dummy in dummies.values():
