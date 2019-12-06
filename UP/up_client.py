@@ -39,7 +39,7 @@ def apply_patch(target, patch_file=None):
 # Architect address
 HOST, PORT = "localhost", 7890
 
-def try_update(dummy_id, current_version, dummy_file):
+def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback):
     # Create a socket (SOCK_STREAM means a TCP socket)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         # Connect to server and send update version request
@@ -93,6 +93,7 @@ def try_update(dummy_id, current_version, dummy_file):
 
 
         try:
+            stop_dummy_callback()
             apply_patch(dummy_file)
             sock.sendall(b'allok|' + dummy_id)
         except:
@@ -106,4 +107,4 @@ def try_update(dummy_id, current_version, dummy_file):
     return True, True
 
 if __name__ == '__main__':
-    try_update('testtestte', 'testtesttesttesttesttesttesttest', 'original')
+    try_update('testtestte', 'testtesttesttesttesttesttesttest', 'original', lambda: True)

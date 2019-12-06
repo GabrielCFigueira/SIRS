@@ -61,6 +61,7 @@ class UP_Server(socketserver.BaseRequestHandler):
                     filename = get_patch_file(self.name, self.version)
                     with open(filename, 'rb') as infile:
                         nonce = self.request.recv(16)
+                        print(nonce)
                         size = (os.stat(filename).st_size).to_bytes(8, 'big')
                         hasher.update(nonce+size)
                         self.request.sendall(nonce+size)
