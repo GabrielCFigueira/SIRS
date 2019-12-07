@@ -11,7 +11,7 @@ versions = {
 
 patches = {
     ('brksnszeus', '10100000000000000000000000000000'):
-        'brake_patch_1-2.patch'
+        'UP/brake_patch_1-2.patch'
 }
 
 def get_latest_version(id_name):
