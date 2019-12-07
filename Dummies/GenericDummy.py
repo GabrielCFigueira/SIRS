@@ -52,7 +52,11 @@ class GenericDummy(Process):
         state_updater = threading.Thread(target=self.thread_update, args=[],
                                          daemon=True)
         state_updater.start()
-        with socket.create_server(('127.0.0.1', self.port),reuse_port=True) as self.sock:
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as self.sock:
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.sock.bind(('127.0.0.1', self.port))
+            self.sock.listen(1)
             conn, _addr = self.sock.accept()
             with conn:
                 while True:
