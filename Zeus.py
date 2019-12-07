@@ -3,9 +3,14 @@ import threading
 import subprocess
 import socket
 import time
+import logging, logging.config
 import pdb
 from LCP import lcp_provider
 from UP import up_client
+
+logging.config.fileConfig('logging.conf')
+logger = logging.getLogger('ZEUS')
+
 
 my_dummies = {5001: ['python3', 'Dummies/oil.py'],
               5002: ['python3', 'Dummies/gas.py'],
@@ -19,11 +24,11 @@ dummy_processes = {}
 name_lock_sockets = {}
 
 
-UPDATE_SLEEP=3000
+UPDATE_SLEEP = 3000
 RETRY_FAILURES = 5
 RETRY_SLEEP = 0.2
 
-def shutdown_dummy(s, dummy):
+def shutdown_dummy(s, dummy, logger=logger):
     try:
         s.sendall(b'kill')
         r = s.recv(3)
@@ -36,8 +41,9 @@ def shutdown_dummy(s, dummy):
     except:
         return False
 
-def start_dummy(command, port):
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+def start_dummy(command, port, logger=logger):
+    #proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    proc = subprocess.Popen(cmd, stdout=1, stderr=2)
 
     attempts, success = 0, False
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -60,10 +66,9 @@ def start_dummy(command, port):
     name_lock_sockets[name] = (threading.Lock(), s)
     dummy_processes[name] = (proc, port)
 
-#my_dummies = {0: ['python3', 'Dummies/GenericDummy.py']}
-
 
 def thread_dispatch_rcp(my_pipe):
+    logger = logging.getLogger('ZEUS_RCP')
     while True:
         the_query = my_pipe.recv()
         try:
@@ -84,42 +89,53 @@ def thread_dispatch_rcp(my_pipe):
         my_pipe.send(response)
 
 def thread_dummy_update():
-
+    logger = logging.getLogger('ZEUS_UP')
     while True:
+        logger.info('Checking for updates')
+        num = 0
         for name, (lock, s) in name_lock_sockets.items():
             with lock:
-                print("Updating {}".format(name))
-                #pdb.set_trace()
+                logger.debug('Get id and version from %s', name)
                 s.sendall(b'id')
                 dummy_id = s.recv(10)
                 s.sendall(b'version')
                 dummy_version = s.recv(32)
-                file_name = 'Dummies/{}.py'.format(name) # not general
+                logger.debug('%s -- id:%s   version%s', name, dummy_id, dummy_version)
+                file_name = 'Dummies/{}.py'.format(name) # FIXME: not general
                 proc, port = dummy_processes[name]
                 res = up_client.try_update(dummy_id,
                                            dummy_version,
                                            file_name,
-                                           lambda: shutdown_dummy(s,proc))
-                print("Final result: {}".format(res))
+                                           lambda: shutdown_dummy(s,proc),
+                                           logger=logger)
+                logger.debug('Return value: %s', res)
                 if res[1] == True: # There was an update
+                    logger.info('Dummy "%s" needs to be restarted', name)
+                    num += 1
                     start_dummy(my_dummies[port], port)
+        logger.info('Updated %s dummies', num)
         time.sleep(UPDATE_SLEEP)
 
 if __name__ == '__main__':
 
     #global dummy_processes, name_lock_sockets
+    #global logger
 
     # Launch Dummies
+    logger.info('Start launching %s dummies', len(my_dummies))
+    logger.debug('Dummies dict: %s', my_dummies)
     for port, cmd in my_dummies.items():
         start_dummy(cmd, port)
 
 
     # UP
+    logger.info('Starting Update Protocol thread')
     up = threading.Thread(target=thread_dummy_update, args=[], daemon=True)
     up.start()
 
 
     # RCP #todo refactorize this to use the thread for everything?
+    logger.info('Starting Remote Control Protocol thread')
     rcp_pipe, other_side_pipe = multiprocessing.Pipe()
     rcp = multiprocessing.Process(name='rcp', target=lcp_provider.run,
                                   args=['Zeus', other_side_pipe], daemon=True)
@@ -131,6 +147,7 @@ if __name__ == '__main__':
     input("Press enter to kill them all")
 
 
-    for dummy, _port in dummy_processes.values():
+    logger.info('Shutting down dummies')
+    for dummy, port in dummy_processes.values():
         dummy.terminate()
-        print(dummy.wait())
+        logger.debug('Dummy on port %s exited with %s return code', port, dummy.wait())
