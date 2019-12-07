@@ -7,7 +7,7 @@ logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('HEIMDALL_RCP')
 
 
-class LCP_Bridge(socketserver.BaseRequestHandler):
+class RCP_Bridge(socketserver.BaseRequestHandler):
     """
     Control protocol forwarding class
 
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     HOST, PORT = "localhost", 5678
 
     # Create the server, binding to localhost on port 9999
-    with socketserver.TCPServer((HOST, PORT), LCP_Bridge) as server:
+    with socketserver.TCPServer((HOST, PORT), RCP_Bridge) as server:
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         logger.info("Ready to serve")
