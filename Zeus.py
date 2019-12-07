@@ -5,7 +5,6 @@ import socket
 import time
 import logging, logging.config
 import pdb
-from LCP import lcp_provider
 from UP import up_client
 
 logging.config.fileConfig('logging.conf')
@@ -67,26 +66,45 @@ def start_dummy(command, port, logger=logger):
     dummy_processes[name] = (proc, port)
 
 
-def thread_dispatch_rcp(my_pipe):
+def thread_dispatch_rcp():
     logger = logging.getLogger('ZEUS_RCP')
+    logger.info('Waiting for commands')
     while True:
-        the_query = my_pipe.recv()
-        try:
-            name, rest = the_query.split("|", 1)
-        except Exception:
-            my_pipe.send(b'bad format')
-            continue
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            logger.debug('Trying to bind on port %s', 5679)
+            s.bind(('', 5679))
+            s.listen(1)
+            logger.debug('Waiting for connection on %s', s.getsockname())
+            conn, addr = s.accept()
+            logger.info('Received connection from %s', addr)
+            try:
+                while True:
+                    the_query = conn.recv(16).decode('utf-8').strip()
+                    logger.debug('Got "%s" on the pipe', the_query)
+                    if the_query == 'quit':
+                        break
+                    try:
+                        name, rest = the_query.split("|", 1)
+                    except Exception:
+                        conn.sendall(b'Bad format')
+                        continue
 
-        if name not in name_lock_sockets:
-            my_pipe.send(b'Dummy not found')
-            continue
+                    if name not in name_lock_sockets:
+                        conn.sendall(b'Dummy not found')
+                        continue
 
-        lock = name_lock_sockets[name][0]
-        with lock:
-            s = name_lock_sockets[name][1]
-            s.sendall(bytes(rest, 'ascii'))
-            response = s.recv(256)
-        my_pipe.send(response)
+                    lock = name_lock_sockets[name][0]
+                    with lock:
+                        s = name_lock_sockets[name][1]
+                        s.sendall(bytes(rest, 'ascii'))
+                        response = s.recv(256)
+
+                    logger.debug('Responding with "%s"', response)
+                    conn.sendall(response)
+            except BrokenPipeError:
+                logger.warning('%s disconnected without "quit"', addr)
+
 
 def thread_dummy_update():
     logger = logging.getLogger('ZEUS_UP')
@@ -136,12 +154,8 @@ if __name__ == '__main__':
 
     # RCP #todo refactorize this to use the thread for everything?
     logger.info('Starting Remote Control Protocol thread')
-    rcp_pipe, other_side_pipe = multiprocessing.Pipe()
-    rcp = multiprocessing.Process(name='rcp', target=lcp_provider.run,
-                                  args=['Zeus', other_side_pipe], daemon=True)
-    rcp_thread = threading.Thread(target=thread_dispatch_rcp, args=[rcp_pipe], daemon=True)
+    rcp_thread = threading.Thread(target=thread_dispatch_rcp, args=[], daemon=True)
     rcp_thread.start()
-    rcp.start()
 
 
     input("Press enter to kill them all")

@@ -67,28 +67,31 @@ class GenericDummy(Process):
             self.sock.bind(('127.0.0.1', self.port))
             self.sock.listen(1)
             logger.debug('Started to listen on %s', self.sock.getsockname())
-            conn, addr = self.sock.accept()
-            with conn:
-                logger.info('Received connection from %s', addr)
-                while True:
-                    query = conn.recv(16).decode('utf-8').rstrip().split('|')
-                    logger.info("Got '%s' on the pipe", query)
-                    if query[0] == 'read':
-                        response = bytes(self.get_state(), 'ascii')
-                    elif query[0] == 'kill':
-                        logger.info('Sending ack and shutting down')
-                        conn.sendall(b'ack')
-                        sys.exit(0)
-                    elif query[0] == 'set':
-                        self.set_a_new_state_carefully(query[1])
-                        response = b'ack'
-                    elif hasattr(self, query[0]):
-                        response = bytes(str(getattr(self, query[0])), 'ascii')
-                    else:
-                        response = b'commanderror'
+            while True:
+                conn, addr = self.sock.accept()
+                try:
+                    logger.info('Received connection from %s', addr)
+                    while True:
+                        query = conn.recv(16).decode('utf-8').rstrip().split('|')
+                        logger.info("Got '%s' on the pipe", query)
+                        if query[0] == 'read':
+                            response = bytes(self.get_state(), 'ascii')
+                        elif query[0] == 'kill':
+                            logger.info('Sending ack and shutting down')
+                            conn.sendall(b'ack')
+                            sys.exit(0)
+                        elif query[0] == 'set':
+                            self.set_a_new_state_carefully(query[1])
+                            response = b'ack'
+                        elif hasattr(self, query[0]):
+                            response = bytes(str(getattr(self, query[0])), 'ascii')
+                        else:
+                            response = b'commanderror'
 
-                    logger.info("Answering with %s", response)
-                    conn.sendall(response)
+                        logger.info("Answering with %s", response)
+                        conn.sendall(response)
+                except BrokenPipeError:
+                    logger.warn('Disconnect from %s', addr)
 
 def start_the_dummy(DummyClass):
 

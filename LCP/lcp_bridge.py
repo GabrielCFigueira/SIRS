@@ -1,14 +1,10 @@
 import socketserver
 import socket
-import logging
+import logging,logging.config
 
 
-logging.basicConfig(
-    format='%(name)s [%(levelname)s]\t%(asctime)s - %(message)s',
-    level=logging.INFO,
-    datefmt='%d/%M/%Y %H:%M:%S'
-)
-logger = logging.getLogger('LCP_Bridge')
+logging.config.fileConfig('logging.conf')
+logger = logging.getLogger('HEIMDALL_RCP')
 
 
 class LCP_Bridge(socketserver.BaseRequestHandler):
@@ -25,7 +21,7 @@ class LCP_Bridge(socketserver.BaseRequestHandler):
         logger.info("Connect to zeus and anakin")
         #self.zeus = socket.create_connection(('localhost',5679))
         self.anakin = socket.create_connection(('localhost',5679))
-        logger.info("Connected")
+        logger.debug("Connected")
 
         #self.zeus = socket.create_connection(('zeus',5679))
         #self.anakin = socket.create_connection(('anakin',5679))
@@ -33,51 +29,39 @@ class LCP_Bridge(socketserver.BaseRequestHandler):
 
     def handle(self):
         # self.request is the TCP socket connected to the client
-        logger.debug("{}: start handling requests".format(self.client_address[0]))
+        logger.debug('Start handling requests from %s', self.client_address)
 
         serve = True
         while serve:
             raw_request = self.request.recv(256)
+            logger.debug('Got %s on pipe', raw_request)
             try:
                 destination, rest = self.sanitize(raw_request)
             except ValueError:
-                logger.info("{}: got invalid request, shutting it down".format(
-                                                                self.client_address[0]))
-                logger.info("{}: request was: {}".format(self.client_address[0],
-                                                         raw_request))
+                logger.warning('Got invalid request from %s, ending connection',
+                                                                self.client_address)
+                logger.warning('Request was %s', raw_request)
                 self.request.shutdown(socket.SHUT_RD)
                 self.request.sendall(bytes("Invalid command: ", 'utf-8') + raw_request)
                 return # For cleanup
 
-            logger.debug("{}: request {} is {}".format(
-                                                                self.client_address[0],
-                                                                raw_request,
-                                                                rest))
-
-            logger.info("{}: Got request {} for {}".format(self.client_address[0],
-                                                            rest,
-                                                            destination.getpeername()))
+            logger.info('Request "%s" for %s', rest, destination.getpeername())
 
             destination.sendall(bytes(rest, 'utf-8'))
-            logger.info("{}: Forwarded request".format(self.client_address[0]))
+            logger.debug('Request sent, waiting for response')
             response = destination.recv(256)
-            logger.info("{}: Forwarding response {}".format(self.client_address[0],
-                                                            response))
+            logger.info('Response: %s', response)
             self.request.sendall(response)
 
 
     def sanitize(self, to_sanitize):
-    # TODO: bullet-proof this
-
         try:
             dest, rest = to_sanitize.decode('ascii').strip().split('|', 1)
 
-            # TODO: maybe invert logic and make it default zeus?
-            dest = self.anakin
-#           if command in ['motor', 'lock']:
-#               dest = self.anakin #zeus
-#           elif command == 'read' and opt in ['brake', 'gas', 'direction']:
-#               dest = self.anakin #zeus
+            if dest == 'anakin':
+                dest = self.anakin
+            else:
+                dest = self.anakin #self.zeus
 
             return dest, rest
 
