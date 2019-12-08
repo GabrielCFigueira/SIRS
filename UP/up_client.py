@@ -5,10 +5,9 @@ from os import urandom, replace, remove, path
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import InvalidSignature
 from bsdiff4 import file_patch
 import pdb
-
-#TODO tothink: use name or just uid? still need to kill a process, and to know a filename from uid
 
 chosen_hash = hashes.SHA512()
 hasher = hashes.Hash(chosen_hash, default_backend())
@@ -19,6 +18,7 @@ with open('pub_key', 'rb') as keyfile:
 
 SIG_SIZE = 64 # from the docs
 CHUNK_SIZE = 4096 # our convention
+NONCE_SIZE = 16 # 128 bits of nonce
 
 def apply_patch(target, patch_file=None):
     if not patch_file:
@@ -57,14 +57,18 @@ def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback, logge
 
 
         # FIXME use nonce
-        sock.sendall(b'check|' + dummy_id)
+        nonce = urandom(NONCE_SIZE)
+        sock.sendall(b'check|' + dummy_id + nonce)
 
         latest_version = sock.recv(32) # 32 chars should be enough
+        received_nonce = sock.recv(NONCE_SIZE)
         info_sig = sock.recv(SIG_SIZE) # probably 64 bytes
 
-        hasher.update(latest_version)
+        hasher.update(latest_version+received_nonce)
         digest = hasher.finalize()
 
+        logger.debug('Sent     nonce: %s', nonce)
+        logger.debug('Received nonce: %s', received_nonce)
         logger.debug('Current version: %s', current_version)
         logger.debug('Latest version:  %s', latest_version)
         logger.debug('Digest: %s', digest)
@@ -77,6 +81,9 @@ def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback, logge
             logger.critical('Signature verification failed when updating %s!', dummy_id)
             return False, False
 
+        if nonce != received_nonce:
+            logger.critical('Altered nonce when updating %s', dummy_id)
+            return False, False
 
         if latest_version == current_version:
             logger.debug('Same version, responding and closing coms')
@@ -88,10 +95,10 @@ def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback, logge
         # renew hasher
         hasher = hashes.Hash(chosen_hash, default_backend())
 
-        nonce = urandom(16) # 128 bits
+        nonce = urandom(NONCE_SIZE) # 128 bits
         sock.sendall(b'download_latest|' + nonce)
 
-        received_nonce = sock.recv(16)
+        received_nonce = sock.recv(NONCE_SIZE)
         bin_size = sock.recv(8)
         hasher.update(received_nonce+bin_size)
 
@@ -114,16 +121,16 @@ def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback, logge
         digest = hasher.finalize()
         logger.debug('Digest: %s', digest)
 
-        if nonce != received_nonce:
-            logger.critical('Altered nonce when updating %s', dummy_id)
-            return False, False
-
         try:
             pubkey.verify(patch_sig, digest)
-        except:
+        except InvalidSignature:
             logger.critical('Signature verification failed when updating %s!', dummy_id)
             return False, False
 
+
+        if nonce != received_nonce:
+            logger.critical('Altered nonce when updating %s', dummy_id)
+            return False, False
 
         try:
             stop_dummy_callback()

@@ -10,7 +10,7 @@ import pdb
 import os
 
 logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('Architect_UP')
+logger = logging.getLogger('ARCHITECT_UP')
 
 private_key = b''
 with open('priv_key', 'rb') as keyfile:
@@ -31,7 +31,6 @@ class UP_Server(socketserver.BaseRequestHandler):
         # self.request is the TCP socket connected to the client
         serve = True
         while serve:
-            # TODO: if nonce, it won't split
             #pdb.set_trace()
             response, hashing = None, False
             query = self.request.recv(16).decode('utf-8') \
@@ -45,7 +44,9 @@ class UP_Server(socketserver.BaseRequestHandler):
             if query[0] == 'check':
                 self.name = query[1]
                 response = self.version = get_latest_version(query[1])
-                response = bytes(response, 'ascii')
+                logger.info('%s: Latest version: %s', self.client_address, self.version)
+                nonce = self.request.recv(16)
+                response = bytes(response, 'ascii') + nonce
             elif query[0] == 'download_latest':
                 if not getattr(self, 'name', False):
                     logger.warn('%s: Download latest without knowing name', self.client_address)
@@ -56,6 +57,7 @@ class UP_Server(socketserver.BaseRequestHandler):
                 else:
                     hashing = True
                     filename = get_patch_file(self.name, self.version)
+                    logger.info('%s: Sending patch "%s"', self.client_address, filename)
                     nonce = self.request.recv(16)
                     size = (os.stat(filename).st_size).to_bytes(8, 'big')
 
@@ -75,11 +77,12 @@ class UP_Server(socketserver.BaseRequestHandler):
                 logger.warn('%s: Error on interaction with component %s', self.client_address,
                                                                           query[1])
                 serve = False
-                response = False
             elif query[0] == 'allok':
                 logger.info('Successful interaction with component %s', query[1])
                 serve = False
-                response = False
+            else:
+                logger.warning('Unexpected message: %s, stopping interaction', query)
+                serve = False
 
 
 
@@ -103,7 +106,7 @@ class ThreadingUP_Server(socketserver.ThreadingMixIn, UP_Server):
     pass
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 7890
+    HOST, PORT = "", 7890
 
     # Create the server, binding to localhost on port 9999
     with socketserver.TCPServer((HOST, PORT), ThreadingUP_Server) as server:

@@ -116,9 +116,10 @@ def thread_dummy_update():
                 logger.debug('Get id and version from %s', name)
                 s.sendall(b'id')
                 dummy_id = s.recv(10)
+                logger.debug('%s -- id: %s', name, dummy_id)
                 s.sendall(b'version')
                 dummy_version = s.recv(32)
-                logger.debug('%s -- id:%s   version%s', name, dummy_id, dummy_version)
+                logger.debug('%s -- version: %s', name, dummy_version)
                 file_name = 'Dummies/{}.py'.format(name) # FIXME: not general
                 proc, port = dummy_processes[name]
                 res = up_client.try_update(dummy_id,
