@@ -173,6 +173,12 @@ def thread_certificate_checking():
                     logger.debug('Finished getting %s', what)
                 except (ConnectionRefusedError, BrokenPipeError):
                     logger.warning('Unable to connect to Certificate Server in %s', 'architect')
+                    # compatibility hack
+                    class Object(object):
+                        pass
+                    res = Object()
+                    res.next_update = date_for_update
+                    return res
         else:
             logger.debug('Not getting new %s', what)
 
@@ -185,6 +191,7 @@ def thread_certificate_checking():
 
 
 
+    # here I just want to fetch it
     up_cert = get_pem_from_arch('UP', 'zeus_current_up_cert.pem')
     crl_next_update = datetime.datetime.today()
     while True:
