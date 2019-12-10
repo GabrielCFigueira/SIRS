@@ -10,6 +10,7 @@ from CP.cp_configuration import private_key # generation of private key here
 from CP import cp_utils, cp_server
 from UP import up_server
 from MP import mp_server
+import addresses
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('ARCHITECT')
@@ -68,12 +69,14 @@ if __name__ == '__main__':
 
     # Run a thread to serve Certificate Requests
     certificate_server = threading.Thread(target=run_a_server,
-                                          args=[cp_server.CP_Server, ('', 5900), {}, 'CP'],
+                                          args=[cp_server.CP_Server,
+                                        addresses.ARCHITECT_CP, {}, 'CP'],
                                           daemon=True)
 
     up_props = {'private_key_getter': (lambda: up_priv_key)}
     up_server = threading.Thread(target=run_a_server,
-                                          args=[up_server.UP_Server, ('', 7890), up_props, 'UP'],
+                                 args=[up_server.UP_Server,
+                            addresses.ARCHITECT_UP, up_props, 'UP'],
                                           daemon=True)
 
     mp_props = {'private_key_getter': (lambda: mp_priv_key)}

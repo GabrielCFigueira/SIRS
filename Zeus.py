@@ -4,8 +4,9 @@ import subprocess
 import socket
 import time, datetime
 import logging, logging.config
-import pdb
-#from UP import up_client
+import addresses
+from UP import up_client
+
 from CP import cp_utils
 
 logging.config.fileConfig('logging.conf')
@@ -80,7 +81,7 @@ def thread_dispatch_rcp():
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             logger.debug('Trying to bind on port %s', 5679)
-            s.bind(('', 5679))
+            s.bind(addresses.ZEUS_RCP)
             s.listen(1)
             logger.debug('Waiting for connection on %s', s.getsockname())
             conn, addr = s.accept()
@@ -205,7 +206,7 @@ def thread_certificate_checking():
                 #pdb.set_trace()
                 try:
                     logger.debug('Getting new %s', what)
-                    sock.connect(("127.1", 5900))
+                    sock.connect(addresses.ARCHITECT_CP)
                     sock.sendall(bytes(what, 'utf-8'))
                     size = int.from_bytes(sock.recv(8), 'big')
                     with open(filename, 'wb') as outfile:
@@ -216,6 +217,12 @@ def thread_certificate_checking():
                     logger.debug('Finished getting %s', what)
                 except (ConnectionRefusedError, BrokenPipeError):
                     logger.warning('Unable to connect to Certificate Server in %s', 'architect')
+                    # compatibility hack
+                    class Object(object):
+                        pass
+                    res = Object()
+                    res.next_update = date_for_update
+                    return res
         else:
             logger.debug('Not getting new %s', what)
 
@@ -228,6 +235,7 @@ def thread_certificate_checking():
 
 
 
+    # here I just want to fetch it
     up_cert = get_pem_from_arch('UP', 'zeus_current_up_cert.pem')
     crl_next_update = datetime.datetime.today()
     while True:
