@@ -5,7 +5,7 @@ import socket
 import time, datetime
 import logging, logging.config
 import pdb
-from UP import up_client
+#from UP import up_client
 from CP import cp_utils
 
 logging.config.fileConfig('logging.conf')
@@ -28,9 +28,11 @@ name_lock_sockets = {}
 cert_store = {'UP': [threading.Lock(), None]}
 
 UPDATE_SLEEP = 30
+MONOTORING_SLEEP = 30
 RETRY_FAILURES = 5
 RETRY_SLEEP = 0.2
 CHUNK_SIZE = 4096
+
 
 def shutdown_dummy(s, dummy, logger=logger):
     try:
@@ -109,6 +111,47 @@ def thread_dispatch_rcp():
                     conn.sendall(response)
             except BrokenPipeError:
                 logger.warning('%s disconnected without "quit"', addr)
+
+
+def thread_what_mp():
+    logger = logging.getLogger('ZEUS_MP')
+    HOST, PORT = "localhost", 5555
+    conn = socket.create_connection((HOST, PORT))
+    while True:
+        conn.sendall(b'zeus|what')
+        response = conn.recv(16)
+        print(response)
+        time.sleep(MONOTORING_SLEEP)
+    """
+    logger = logging.getLogger('ZEUS_MP')
+    HOST, PORT = "localhost", 5555
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((HOST, PORT))
+        while True:
+            logger.info('Sending an MP what')
+            s.sendall(b'zeus|what')
+            time.sleep(MONOTORING_SLEEP)
+    ""
+
+
+
+            ""
+                logger.debug('%s -- version: %s', name, dummy_version)
+                file_name = 'Dummies/{}.py'.format(name) # FIXME: not general
+                proc, port = dummy_processes[name]
+                res = up_client.try_update(dummy_id,
+                                           dummy_version,
+                                           file_name,
+                                           lambda: shutdown_dummy(s,proc),
+                                           logger=logger)
+                logger.debug('Return value: %s', res)
+                if res[1] == True: # There was an update
+                    logger.info('Dummy "%s" needs to be restarted', name)
+                    num += 1
+                    start_dummy(my_dummies[port], port)
+    """
+    logger.info('Sent what message to heimdall')
+    time.sleep(MONOTORING_SLEEP)
 
 
 def thread_dummy_update():
@@ -225,15 +268,20 @@ if __name__ == '__main__':
     cp.start()
 
     # UP
-    logger.info('Starting Update Protocol thread')
+    """logger.info('Starting Update Protocol thread')
     up = threading.Thread(target=thread_dummy_update, args=[], daemon=True)
-    up.start()
+    up.start()"""
 
 
     # RCP #todo refactorize this to use the thread for everything?
     logger.info('Starting Remote Control Protocol thread')
     rcp_thread = threading.Thread(target=thread_dispatch_rcp, args=[], daemon=True)
     rcp_thread.start()
+
+    # MP
+    logger.info('Starting Monotoring Protocol thread')
+    mp_thread = threading.Thread(target=thread_what_mp, args=[], daemon=True)
+    mp_thread.start()
 
 
     #time.sleep(5000)

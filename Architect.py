@@ -9,19 +9,20 @@ from cryptography.hazmat.primitives.serialization import Encoding
 from CP.cp_configuration import private_key # generation of private key here
 from CP import cp_utils, cp_server
 from UP import up_server
+from MP import mp_server
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('ARCHITECT')
 
 def run_a_server(server_class, address, attributes_to_inject={}, logger_suffix=''):
-    logger = logging.getLogger('ARCHITECT_{}'.format(logger_suffix))
+    #logger = logging.getLogger('ARCHITECT_{}'.format(logger_suffix))
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(address, server_class) as server:
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         for name, value in attributes_to_inject.items():
             setattr(server, name, value)
-        logger.info("Ready to serve")
+        logger.info("Ready to serve %s", logger_suffix)
         server.serve_forever()
 
 
@@ -74,8 +75,18 @@ if __name__ == '__main__':
     up_server = threading.Thread(target=run_a_server,
                                           args=[up_server.UP_Server, ('', 7890), up_props, 'UP'],
                                           daemon=True)
+
+    mp_props = {'private_key_getter': (lambda: mp_priv_key)}
+    mp_server = threading.Thread(target=run_a_server,
+                                          args=[mp_server.ThreadingMP_Server, ('', 7891), mp_props, 'MP'],
+                                          daemon=True)
+
     certificate_server.start()
+    logger.info("Starting CERT server")
     up_server.start()
+    logger.info("Starting UP server")
+    mp_server.start()
+    logger.info("Starting MP server")
     logger.debug("Start 15 sec sleep before issuing new cert")
     #time.sleep(15)
     input('Press enter for new UP certificate')

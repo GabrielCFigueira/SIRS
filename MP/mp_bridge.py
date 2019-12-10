@@ -1,6 +1,8 @@
 import socketserver
 import socket
-import logging
+import logging, logging.config
+import threading
+import time
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -13,15 +15,11 @@ from cryptography.fernet import Fernet
 import base64
 
 
-logging.basicConfig(
-    format='%(name)s [%(levelname)s]\t%(asctime)s - %(message)s',
-    level=logging.INFO,
-    datefmt='%d/%M/%Y %H:%M:%S'
-)
-logger = logging.getLogger('MP_Bridge')
+logging.config.fileConfig('logging.conf')
+logger = logging.getLogger('HEIMDALL_MP')
 
 d = {"anakin":["brakes"], "zeus":["oil"]} # d = {"anakin":["radio"], "zeus":["brakes", "oil"]}
-f = None
+
 
 
 class MP_Bridge(socketserver.BaseRequestHandler):
@@ -35,111 +33,113 @@ class MP_Bridge(socketserver.BaseRequestHandler):
         """
         Setup connections to both Zeus and Anakin
         """
-        logger.info("Connect to zeus and anakin")
-        #self.zeus = socket.create_connection(('localhost',5679))
-        self.anakin = socket.create_connection(('localhost',5680))
-        logger.info("Connected")
+        """
+        global arch_public_key
+        logger.info("Connection received from ¯\_(ツ)_/¯")
 
-        #self.zeus = socket.create_connection(('zeus',5679))
-        #self.anakin = socket.create_connection(('anakin',5679))
+        # FIXME need to get cert from common location, and cannot be static
+        if hasattr(self.server, 'public_key_getter'):
+            self.server.public_key = self.server.public_key_getter()
+        if hasattr(self.server, 'public_key'):
+            arch_public_key = self.server.public_key
+        else:
+            logger.critical('Connection received but no private key available')
+            raise Exception("Missing private key")
+        """
+        import pdb
+        #pdb.set_trace()
+        logger.info("Connect to architect")
+
+        self.arch = socket.create_connection(('localhost', 7891))
+        self.f_lock = threading.Lock()
+
+        logger.info("Connected")
 
 
     def handle(self):
         # self.request is the TCP socket connected to the client
-        logger.debug("{}: start handling requests".format(self.client_address[0]))
 
-        firstMsg = True
-
-        serve = True
-        while serve:
-            if(firstMsg):
-                raw_request = self.request.recv(49)
-                #logger.info("{}: Received key {}".format(self.client_address[0], raw_request))
-
-                # Generate a private key for use in the exchange.
-                server_private_key = ec.generate_private_key(
-                    ec.SECP384R1(), default_backend()
-                )
-                server_public_key = server_private_key.public_key()
-
-                # Get client public key from the socket.
-                client_public_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP384R1(), raw_request)
-
-                shared_key = server_private_key.exchange(ec.ECDH(), client_public_key)
-
-                # Perform key derivation. This is the session key.
-                session_key = HKDF(algorithm=hashes.SHA256(),length=32,salt=None,info=b'handshake data',backend=default_backend()).derive(shared_key)
-
-                # Send key to the sender.
-                self.request.sendall(server_public_key.public_bytes(encoding=Encoding.X962, format=PublicFormat.CompressedPoint))
+        key_refresher = threading.Thread(target=thread_session_key_refresher,
+                                         args=[self], daemon=True)
+        key_refresher.start()
 
 
-                encoded_s_key = base64.b64encode(session_key)
-                f = Fernet(encoded_s_key)
+        logger.info("{}: start handling requests".format(self.client_address[0]))
 
-                firstMsg = False
+        bridge = True
+        while bridge:
+                to_bridge = None
 
+                request = self.request.recv(256)
+                to_bridge = request
+                logger.debug('Gotta bridge "%s"', to_bridge)
 
+                with self.f_lock:
 
+                    import pdb
+                    #pdb.set_trace()
+                    if to_bridge == b'':
+                        logger.debug('Nothing to bridge, ending')
+                        return
 
-            else:
-                raw_request = self.request.recv(256)
-                #logger.info("{}: Got request {} for {}".format(self.client_address[0],
-                #                                                rest,
-                #                                                destination.getpeername()))
+                    if to_bridge:
+                        enc_to_bridge = self.f.encrypt(to_bridge)
+                        bin_mess = len(enc_to_bridge).to_bytes(8, 'big') + enc_to_bridge
+                        logger.debug('Sending %s as %s', to_bridge, bin_mess)
+                        self.arch.sendall(b'msg')
+                        self.arch.sendall(bin_mess)
 
-                # DECRYPT
-                try:
-                    msg = f.decrypt(raw_request)
-                except:
-                    logger.warning("Invalid Token")
-                    return
-
-                logger.info("{}: raw_request {} is {}".format(self.client_address[0],
-                                                                raw_request,
-                                                                msg))
-                destination, rest = self.sanitize(msg)
-
-                # send to destination the decrypted request
-                destination.sendall(bytes(rest, 'utf-8'))
-                logger.info("{}: Forwarded request".format(self.client_address[0]))
-
-                # receive response (for example motor levels)
-                response = destination.recv(256)
-                logger.info("{}: Forwarding response {}".format(self.client_address[0],
-                                                                response))
-                # ENCRYPT
-                response = f.encrypt(response)
-                self.request.sendall(response)
-
-
-    def sanitize(self, to_sanitize):
-        try:
-            dest, rest = to_sanitize.decode('ascii').strip().split('|', 1)
-
-            if dest == 'anakin':
-                dest = self.anakin
-            else:
-                dest = self.anakin #self.zeus
-
-            return dest, rest
-
-        except:
-            raise ValueError("Invalid user command")
+                    logger.debug('Awaiting a response...')
+                    size_response = int.from_bytes(self.arch.recv(8), 'big')
+                    enc_response = self.arch.recv(size_response)
+                    response = self.f.decrypt(enc_response)
+                    logger.debug('Got %s as response', response)
+                    self.request.sendall(response)
 
 
     def finish(self):
         logger.info("{}: End request bridging".format(self.client_address[0]))
-        #self.zeus.sendall(b'quit')
-        #self.zeus.close()
-        self.anakin.sendall(b'quit')
-        self.anakin.close()
+        self.arch.sendall(b'qit')
+        self.arch.close()
+
+
+
+def session_key_exchange(self):
+    # Exchange session key
+    with self.f_lock:
+        logger.debug('Start kex')
+        session_key = Fernet.generate_key()
+        f_temp = Fernet(session_key)
+        logger.debug('Generated')
+        #session_key_enc = arch_public_key.encrypt(session_key)
+        session_key_enc = session_key
+        print(session_key_enc)
+
+        self.arch.sendall(b'key')
+        self.arch.sendall(session_key_enc)
+        enc_challenge = self.arch.recv(100)
+        logger.debug('Sent')
+        challenge = f_temp.decrypt(enc_challenge)
+        print(f'Query: {challenge}')
+
+        self.f = f_temp
+
+
+
+def thread_session_key_refresher(self):
+    while True:
+        session_key_exchange(self)
+        time.sleep(5000000)
+
+class ThreadingMP_Bridge(socketserver.ThreadingMixIn, MP_Bridge):
+    pass
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 5555
 
     # Create the server, binding to localhost on port 5555
-    with socketserver.TCPServer((HOST, PORT), MP_Bridge) as server:
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.TCPServer((HOST, PORT), ThreadingMP_Bridge) as server:
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         logger.info("Ready to serve")
