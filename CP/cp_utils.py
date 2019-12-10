@@ -1,4 +1,5 @@
 import datetime
+import subprocess
 from cryptography import x509
 from cryptography.x509.oid import NameOID, ExtensionOID
 from cryptography.hazmat.backends import default_backend
@@ -74,3 +75,33 @@ def create_crl(ca_private_key, ca_name, certificates_to_revoke,
     )
 
     return crl, certs_needed_to_revoke
+
+def check_certificate(to_check, ca_cert=None, crl_file=None):
+
+    ca_check, crl_check = [], []
+    if ca_cert:
+        ca_check = ['-CAfile', ca_cert]
+    if crl_file:
+        crl_check = ['-crl_check', '-CRLfile', crl_file]
+
+
+    command = ['openssl', 'verify', *ca_check, *crl_check, to_check]
+
+    try:
+        subprocess.run(command, capture_output=True, check=True)
+        return True
+    except:
+        return False
+
+
+def read_cert(filename):
+    with open(filename, 'rb') as infile:
+        cert = x509.load_pem_x509_certificate(infile.read(),
+                                            default_backend())
+    return cert
+
+def read_crl(filename):
+    with open(filename, 'rb') as infile:
+        cert = x509.load_pem_x509_crl(infile.read(),
+                                      default_backend())
+    return cert

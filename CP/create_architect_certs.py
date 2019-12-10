@@ -52,7 +52,7 @@ mp_priv_key = ec.generate_private_key(
 )
 mp_pub_key = mp_priv_key.public_key()
 mp_certificate = cp_utils.create_child_cert(private_key, 'Architect Root CA',
-                                            up_pub_key, 'Architect MP',
+                                            mp_pub_key, 'Architect MP',
                                             ['key_encipherment'])
 
 print(isinstance(mp_certificate, x509.Certificate))
@@ -79,3 +79,14 @@ print(e)
 with open('crl_list', 'wb') as outfile:
     outfile.write(e)
 
+
+print("UP taking into account Root_CA",
+        cp_utils.check_certificate('obl', 'oal'))
+
+
+print("MP taking into account Root_CA",
+        cp_utils.check_certificate('ocl', 'oal'))
+
+
+print("UP taking into account Root_CA + CRL",
+        cp_utils.check_certificate('obl', 'oal', 'crl_list'))

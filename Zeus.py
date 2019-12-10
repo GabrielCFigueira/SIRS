@@ -2,10 +2,11 @@ import multiprocessing
 import threading
 import subprocess
 import socket
-import time
+import time, datetime
 import logging, logging.config
 import pdb
 from UP import up_client
+from CP import cp_utils
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('ZEUS')
@@ -16,16 +17,20 @@ my_dummies = {5001: ['python3', 'Dummies/oil.py'],
               5003: ['python3', 'Dummies/speed.py'],
               5011: ['python3', 'Dummies/brakes.py']}
 
-# name -> (subprocess, port) GLOBAL UNLOCKED
+# name -> (subprocess, port) GLOBAL UNLOCKED (só dummy update deve mexer)
 dummy_processes = {}
 
 # name -> (lock, shared socket) GLOBAL locked name by name
 name_lock_sockets = {}
 
+# shared lock to synchronize certificate updating and everybody else
+# name -> (lock, shared cert) GLOBAL
+cert_store = {'UP': [threading.Lock(), None]}
 
-UPDATE_SLEEP = 3000
+UPDATE_SLEEP = 30
 RETRY_FAILURES = 5
 RETRY_SLEEP = 0.2
+CHUNK_SIZE = 4096
 
 def shutdown_dummy(s, dummy, logger=logger):
     try:
@@ -112,7 +117,15 @@ def thread_dummy_update():
         logger.info('Checking for updates')
         num = 0
         for name, (lock, s) in name_lock_sockets.items():
-            with lock:
+            cert_lock = cert_store['UP'][0]
+            with cert_lock, lock:
+                pubkey = cert_store['UP'][1]
+                if not pubkey:
+                    logger.warning('Cannot update while no UP certificates are known')
+                    break
+                else:
+                    pubkey = pubkey.public_key()
+                s = name_lock_sockets[name][1]
                 logger.debug('Get id and version from %s', name)
                 s.sendall(b'id')
                 dummy_id = s.recv(10)
@@ -126,6 +139,7 @@ def thread_dummy_update():
                                            dummy_version,
                                            file_name,
                                            lambda: shutdown_dummy(s,proc),
+                                           pubkey,
                                            logger=logger)
                 logger.debug('Return value: %s', res)
                 if res[1] == True: # There was an update
@@ -134,6 +148,64 @@ def thread_dummy_update():
                     start_dummy(my_dummies[port], port)
         logger.info('Updated %s dummies', num)
         time.sleep(UPDATE_SLEEP)
+
+
+
+def thread_certificate_checking():
+    logger = logging.getLogger('ZEUS_CP')
+
+    def get_pem_from_arch(what, filename, date_for_update=datetime.datetime.today()):
+
+        if date_for_update < datetime.datetime.today():
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                # Connect to server and send update version request
+                #pdb.set_trace()
+                try:
+                    logger.debug('Getting new %s', what)
+                    sock.connect(("127.1", 5900))
+                    sock.sendall(bytes(what, 'utf-8'))
+                    size = int.from_bytes(sock.recv(8), 'big')
+                    with open(filename, 'wb') as outfile:
+                        while size > 0:
+                            chunk = sock.recv(CHUNK_SIZE if CHUNK_SIZE < size else size)
+                            outfile.write(chunk)
+                            size -= len(chunk)
+                    logger.debug('Finished getting %s', what)
+                except (ConnectionRefusedError, BrokenPipeError):
+                    logger.warning('Unable to connect to Certificate Server in %s', 'architect')
+        else:
+            logger.debug('Not getting new %s', what)
+
+        if what == 'CRL':
+            crl = cp_utils.read_crl(filename)
+            return crl
+        else:
+            cert = cp_utils.read_cert(filename)
+            return cert
+
+
+
+    up_cert = get_pem_from_arch('UP', 'zeus_current_up_cert.pem')
+    crl_next_update = datetime.datetime.today()
+    while True:
+        cert_lock = cert_store['UP'][0]
+        with cert_lock:
+            crl = get_pem_from_arch('CRL', 'zeus_current_crl.pem', crl_next_update)
+            while not cp_utils.check_certificate('zeus_current_up_cert.pem', 'root_cert.pem', 'zeus_current_crl.pem'):
+                logger.warning('No valid UP certificate')
+                time.sleep(5)
+                up_cert = get_pem_from_arch('UP', 'zeus_current_up_cert.pem')
+                crl = get_pem_from_arch('CRL', 'zeus_current_crl.pem', crl.next_update)
+            logger.info('Got valid certificates')
+            cert_store['UP'][1] = up_cert
+            crl_next_update = crl.next_update
+
+
+        nearest_datetime = crl.next_update if crl.next_update < up_cert.not_valid_after else up_cert.not_valid_after
+        time.sleep(((nearest_datetime-datetime.datetime.today())/2).seconds)
+
+
+
 
 if __name__ == '__main__':
 
@@ -147,6 +219,11 @@ if __name__ == '__main__':
         start_dummy(cmd, port)
 
 
+    # CP
+    logger.info('Starting Certificate Protocol thread')
+    cp = threading.Thread(target=thread_certificate_checking, args=[], daemon=True)
+    cp.start()
+
     # UP
     logger.info('Starting Update Protocol thread')
     up = threading.Thread(target=thread_dummy_update, args=[], daemon=True)
@@ -159,6 +236,7 @@ if __name__ == '__main__':
     rcp_thread.start()
 
 
+    #time.sleep(5000)
     input("Press enter to kill them all")
 
 

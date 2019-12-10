@@ -5,18 +5,15 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import utils, padding
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
-from up_versions import get_latest_version, get_patch_file
+from .up_versions import get_latest_version, get_patch_file
 import pdb
 import os
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('ARCHITECT_UP')
 
-private_key = b''
-with open('priv_key', 'rb') as keyfile:
-    private_key = load_pem_private_key(keyfile.read(), None, default_backend())
-
-chosen_hash = hashes.SHA512()
+chosen_hash = hashes.SHA256()
+sign_alg = ec.ECDSA(hashes.SHA256())
 
 
 class UP_Server(socketserver.BaseRequestHandler):
@@ -24,7 +21,17 @@ class UP_Server(socketserver.BaseRequestHandler):
     Updates provider
     """
     def setup(self):
+        global private_key
         logger.info("Connection received from ¯\_(ツ)_/¯")
+
+        # FIXME need to get cert from common location, and cannot be static
+        if hasattr(self.server, 'private_key_getter'):
+            self.server.private_key = self.server.private_key_getter()
+        if hasattr(self.server, 'private_key'):
+            private_key = self.server.private_key
+        else:
+            logger.critical('Connection received but no private key available')
+            raise Exception("Missing private key")
 
 
     def handle(self):
@@ -94,7 +101,7 @@ class UP_Server(socketserver.BaseRequestHandler):
 
             if hashing or response:
                 digest = hasher.finalize()
-                sig = private_key.sign(digest)
+                sig = private_key.sign(digest, sign_alg)
 
                 logger.debug('%s: Digest: %s', self.client_address, digest)
                 logger.debug('%s: Signature: %s', self.client_address, sig)

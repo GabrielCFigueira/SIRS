@@ -2,21 +2,20 @@ import socket
 import sys
 import logging
 from os import urandom, replace, remove, path
-from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from cryptography import x509
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature
 from bsdiff4 import file_patch
 import pdb
 
-chosen_hash = hashes.SHA512()
+chosen_hash = hashes.SHA256()
+sign_alg = ec.ECDSA(hashes.SHA256())
 hasher = hashes.Hash(chosen_hash, default_backend())
 
-pubkey = b''
-with open('pub_key', 'rb') as keyfile:
-    pubkey = load_pem_public_key(keyfile.read(), default_backend())
 
-SIG_SIZE = 64 # from the docs
+SIG_SIZE = 128 # from the docs
 CHUNK_SIZE = 4096 # our convention
 NONCE_SIZE = 16 # 128 bits of nonce
 
@@ -39,7 +38,7 @@ def apply_patch(target, patch_file=None):
 # Architect address
 HOST, PORT = "localhost", 7890
 
-def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback, logger=logging):
+def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback, pubkey, logger=logging):
     # Create a socket (SOCK_STREAM means a TCP socket)
     logger.debug('Trying to connect to Update Server in %s:%s', HOST, PORT)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -76,7 +75,7 @@ def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback, logge
 
 
         try:
-            pubkey.verify(info_sig, digest)
+            pubkey.verify(info_sig, digest, sign_alg)
         except InvalidSignature:
             logger.critical('Signature verification failed when updating %s!', dummy_id)
             return False, False
@@ -122,7 +121,7 @@ def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback, logge
         logger.debug('Digest: %s', digest)
 
         try:
-            pubkey.verify(patch_sig, digest)
+            pubkey.verify(patch_sig, digest, sign_alg)
         except InvalidSignature:
             logger.critical('Signature verification failed when updating %s!', dummy_id)
             return False, False
@@ -149,4 +148,9 @@ def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback, logge
     return True, True
 
 if __name__ == '__main__':
-    try_update('testtestte', 'testtesttesttesttesttesttesttest', 'original', lambda: True)
+    with open('up_cert.pem', 'rb') as infile:
+        up_cert = x509.load_pem_x509_certificate(
+                                            infile.read(),
+                                            default_backend())
+    pubkey = up_cert.public_key()
+    try_update('testtestte', 'testtesttesttesttesttesttesttest', 'original', lambda: True, pubkey)
