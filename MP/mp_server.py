@@ -26,7 +26,7 @@ class MP_Server(socketserver.BaseRequestHandler):
         global private_key
         import pdb
         #pdb.set_trace()
-        logger.critical("Connection received from ¯\_(ツ)_/¯")
+        logger.info("Connection received from ¯\_(ツ)_/¯")
 
         # FIXME need to get cert from common location, and cannot be static
         if hasattr(self.server, 'private_key_getter'):
