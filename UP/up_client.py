@@ -8,6 +8,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature
 from bsdiff4 import file_patch
+import addresses
 import pdb
 
 chosen_hash = hashes.SHA256()
@@ -35,18 +36,16 @@ def apply_patch(target, patch_file=None):
         if path.exists(temp):
             remove(temp)
 
-# Architect address
-HOST, PORT = "localhost", 7890
 
 def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback, pubkey, logger=logging):
     # Create a socket (SOCK_STREAM means a TCP socket)
-    logger.debug('Trying to connect to Update Server in %s:%s', HOST, PORT)
+    logger.debug('Trying to connect to Update Server in %s', addresses.ARCHITECT_UP)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         # Connect to server and send update version request
         #pdb.set_trace()
 
         try:
-            sock.connect((HOST, PORT))
+            sock.connect(addresses.ARCHITECT_UP)
         except ConnectionRefusedError:
             logger.warning('Unable to connect to Update Server in %s:%s', HOST, PORT)
             return False, False
