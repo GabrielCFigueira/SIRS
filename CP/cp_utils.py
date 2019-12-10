@@ -88,7 +88,7 @@ def check_certificate(to_check, ca_cert=None, crl_file=None):
     command = ['openssl', 'verify', *ca_check, *crl_check, to_check]
 
     try:
-        subprocess.run(command, capture_output=True, check=True)
+        subprocess.run(command, check=True)
         return True
     except:
         return False
