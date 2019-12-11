@@ -3,6 +3,7 @@ import socket
 import logging, logging.config
 import threading
 import time
+import os
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -114,15 +115,41 @@ def session_key_exchange(self):
         session_key = Fernet.generate_key()
         f_temp = Fernet(session_key)
         logger.debug('Generated')
-        #session_key_enc = session_key
         session_key_enc = self.arch_public_key.encrypt(session_key, encryption_padding)
 
         self.arch.sendall(b'key')
         self.arch.sendall(session_key_enc)
-        enc_challenge = self.arch.recv(100)
+        # Challenge
+        # Create challenge
+        challenge = os.urandom(32)
+        # Encrypt challenge
+        enc_challenge = f_temp.encrypt(challenge)
+        # Send challenge
+        logger.debug('challenge size %s', str(len(enc_challenge)))
+        self.arch.sendall(enc_challenge)
+        # Receive challenge response
+        #size_response = int.from_bytes(self.arch.recv(8), 'big')
+        #enc_response = self.arch.recv(size_response)
+        enc_challenge_response = self.arch.recv(140)
+        # Decrypt challenge
+        challenge_response = f_temp.decrypt(enc_challenge_response)
+        # Verify challenge
+        if int.from_bytes(challenge_response, 'big') == int.from_bytes(challenge, 'big') + 1 :
+            logger.info('Challenge corret!')
+        else:
+            return
+        # Receive challenge_server
+        enc_challenge_server = self.arch.recv(140)
+        # Decrypt challenge_server
+        challenge_server = f_temp.decrypt(enc_challenge_server)
+        logger.debug('ex ch %s', str(int.from_bytes(challenge_server, 'big')))
+        # Add 1 to challenge_server
+        challenge_server_1 = (int.from_bytes(challenge_server, 'big') + 1).to_bytes(32, 'big')
+        # Send challenge_server+1
         logger.debug('Sent')
-        challenge = f_temp.decrypt(enc_challenge)
-        print(f'Query: {challenge}')
+        enc_challenge_server_1 = f_temp.encrypt(challenge_server_1)
+        self.arch.sendall(enc_challenge_server_1)
+        # End of Challenge
 
         self.f = f_temp
 
@@ -131,7 +158,7 @@ def session_key_exchange(self):
 def thread_session_key_refresher(self):
     while True:
         session_key_exchange(self)
-        time.sleep(5000000)
+        time.sleep(5)
 
 class ThreadingMP_Bridge(socketserver.ThreadingMixIn, MP_Bridge):
     pass

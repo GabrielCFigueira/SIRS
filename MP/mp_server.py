@@ -81,14 +81,39 @@ class MP_Server(socketserver.BaseRequestHandler):
 def session_key_exchange(heimdall_socket):
     logger.debug('Getting new session key')
     session_key_enc = heimdall_socket.recv(256)
-    #session_key = session_key_enc
     session_key = private_key.decrypt(session_key_enc, encryption_padding)
-
-    #create challenge!!!
     f_temp = Fernet(session_key)
-    challenge = f_temp.encrypt(b'ola')
-    logger.debug('Sending nonce: "%s"', challenge)
-    heimdall_socket.sendall(challenge)
+
+
+    # Challenge
+    # Receive Challenge
+    enc_challenge_bridge = heimdall_socket.recv(140)
+    # Decrypt challenge_bridge
+    challenge_bridge = f_temp.decrypt(enc_challenge_bridge)
+    logger.debug('ex ch %s', str(int.from_bytes(challenge_bridge, 'big')))
+    # Add 1 to challenge_bridge
+    challenge_bridge_1 = (int.from_bytes(challenge_bridge, 'big') + 1).to_bytes(32, 'big')
+    # Send challenge_bridge+1
+    logger.debug('Sent')
+    enc_challenge_bridge_1 = f_temp.encrypt(challenge_bridge_1)
+    heimdall_socket.sendall(enc_challenge_bridge_1)
+    # Create challenge
+    challenge = os.urandom(32)
+    # Encrypt challenge
+    enc_challenge = f_temp.encrypt(challenge)
+    # Send challenge
+    heimdall_socket.sendall(enc_challenge)
+    # Receive challenge_response
+    enc_challenge_response = heimdall_socket.recv(140)
+    # Decrypt challenge
+    challenge_response = f_temp.decrypt(enc_challenge_response)
+    # Verify challenge
+    if int.from_bytes(challenge_response, 'big') == int.from_bytes(challenge, 'big') + 1 :
+        logger.info('Challenge corret!')
+    else:
+        return None
+    # End of Challenge
+    
     return f_temp
 
 
