@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.serialization import PublicFormat
 
 from cryptography.fernet import Fernet
 import base64
+import addresses
 
 
 logging.config.fileConfig('logging.conf')
@@ -52,7 +53,7 @@ class MP_Bridge(socketserver.BaseRequestHandler):
 
         logger.info("Connect to architect")
 
-        self.arch = socket.create_connection(('localhost', 7891))
+        self.arch = socket.create_connection(addresses.ARCHITECT_MP)
         self.f_lock = threading.Lock()
 
         logger.info("Connected")
@@ -136,11 +137,10 @@ class ThreadingMP_Bridge(socketserver.ThreadingMixIn, MP_Bridge):
     pass
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 5555
 
     # Create the server, binding to localhost on port 5555
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer((HOST, PORT), ThreadingMP_Bridge) as server:
+    with socketserver.TCPServer(addresses.HEIMDALL_MP, ThreadingMP_Bridge) as server:
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         logger.info("Ready to serve")

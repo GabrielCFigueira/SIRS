@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from .up_versions import get_latest_version, get_patch_file
 import pdb
 import os
+import addresses
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('ARCHITECT_UP')
@@ -113,10 +114,9 @@ class ThreadingUP_Server(socketserver.ThreadingMixIn, UP_Server):
     pass
 
 if __name__ == "__main__":
-    HOST, PORT = "", 7890
 
     # Create the server, binding to localhost on port 9999
-    with socketserver.TCPServer((HOST, PORT), ThreadingUP_Server) as server:
+    with socketserver.TCPServer(addresses.ARCHITECT_UP, ThreadingUP_Server) as server:
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         logger.info('Ready to serve')

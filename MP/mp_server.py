@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives.serialization import load_pem_private_key
 import pdb
 import os
 
+import addresses
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('ARCHITECT_MP')
@@ -95,11 +96,10 @@ class ThreadingMP_Server(socketserver.ThreadingMixIn, MP_Server):
     pass
 
 if __name__ == "__main__":
-    HOST, PORT = "", 7891
 
     # Create the server, binding to localhost on port 7891
     #socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer((HOST, PORT), ThreadingMP_Server) as server:
+    with socketserver.TCPServer(addresses.ARCHITECT_MP, ThreadingMP_Server) as server:
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         logger.info('Ready to serve')

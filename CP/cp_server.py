@@ -2,11 +2,10 @@ import os
 import socketserver
 import socket
 import logging,logging.config
+import addresses
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('ARCHITECT_CP')
-
-HOST, PORT = "", 5900
 
 certificate_files = {'CRL': 'crl.pem',
                      'UP':  'up_cert.pem',
@@ -45,7 +44,7 @@ class CP_Server(socketserver.BaseRequestHandler):
 
 if __name__ == "__main__":
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer((HOST, PORT), CP_Server) as server:
+    with socketserver.TCPServer(addresses.ARCHITECT_CP, CP_Server) as server:
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         logger.info('Ready to serve')

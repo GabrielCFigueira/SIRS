@@ -1,6 +1,7 @@
 import socketserver
 import socket
 import logging,logging.config
+import addresses
 
 
 logging.config.fileConfig('logging.conf')
@@ -19,12 +20,9 @@ class RCP_Bridge(socketserver.BaseRequestHandler):
         Setup connections to both Zeus and Anakin
         """
         logger.info("Connect to zeus and anakin")
-        #self.zeus = socket.create_connection(('localhost',5679))
-        self.anakin = socket.create_connection(('localhost',5679))
+        #self.zeus = socket.create_connection(addresses.ZEUS_RCP)
+        self.anakin = socket.create_connection(addresses.ANAKIN_RCP)
         logger.debug("Connected")
-
-        #self.zeus = socket.create_connection(('zeus',5679))
-        #self.anakin = socket.create_connection(('anakin',5679))
 
 
     def handle(self):
@@ -77,11 +75,10 @@ class RCP_Bridge(socketserver.BaseRequestHandler):
         self.anakin.close()
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 5678
 
     # Create the server, binding to localhost on port 9999
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer((HOST, PORT), RCP_Bridge) as server:
+    with socketserver.TCPServer(addresses.HEIMDALL_RCP, RCP_Bridge) as server:
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         logger.info("Ready to serve")

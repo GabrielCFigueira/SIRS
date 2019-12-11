@@ -123,9 +123,8 @@ def thread_what_mp():
         time.sleep(MONOTORING_SLEEP)
     """
     logger = logging.getLogger('ZEUS_MP')
-    HOST, PORT = "localhost", 5555
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((HOST, PORT))
+        s.connect(addresses.ZEUS_MP)
         while True:
             logger.info('Sending an MP what')
             s.sendall(b'zeus|what')

@@ -47,7 +47,7 @@ def try_update(dummy_id, current_version, dummy_file, stop_dummy_callback, pubke
         try:
             sock.connect(addresses.ARCHITECT_UP)
         except ConnectionRefusedError:
-            logger.warning('Unable to connect to Update Server in %s:%s', HOST, PORT)
+            logger.warning('Unable to connect to Update Server in %s', addresses.ARCHITECT_UP)
             return False, False
 
         logger.debug('Connection established with Update Server')
