@@ -1,5 +1,37 @@
 # SIRSproj
 
+## To run
+
+Python dependencies: bsdiff4, cryptography
+
+Note: please run Architect.py alone first to generate a Root certificate to be shared with others.
+If in local testing, just run it first.
+
+```sh
+make local
+# In different terminals:
+python3 Architect.py
+python3 Heimdall.py
+python3 Zeus.py
+python3 Anakin.py
+
+# when you want to use RCP
+nc localhost 5678
+```
+
+To run in VMs:
+```sh
+# In each VM
+make vm
+architect$ python3 Architect.py
+# or
+zeus$ python3 Zeus.py
+anakin$ python3 Anakin.py
+# or in Heimdall, after configuring appropriate venv
+heimdall$ cd here/ && ../bin/python Heimdall.py
+# or you want to use RCP
+domus$ ./RCP/rcp_app.sh
+```
 
 ## Packer
 
@@ -25,7 +57,7 @@ In case you suspect the build is stalling, we can always open a vnc connection, 
 
 GUIDE STARTS HERE:
 
-The images are available in this link: <link>
+The images are available in this link: https://drive.google.com/drive/folders/1s0A5-kRryGFiOy8zhBZGYh3uWfXpIbW-
 PLatform used was VMware Workstation 15.
 Create the VMs with 1 CPU and 512MB RAM each, except for Thanos which needs 1GB RAM
 When addind the network adapters, the same MAC address must be used for each interface:
