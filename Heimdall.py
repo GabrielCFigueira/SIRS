@@ -115,7 +115,7 @@ if __name__ == '__main__':
     mp_props = {'public_key_getter': (lambda: careful_getter('MP'))}
     heimdal_mp = threading.Thread(target=run_a_server,
                                    args=[mp_bridge.ThreadingMP_Bridge,
-                                   addresses.HEIMDALL_MP, mp_props, 'MP'],
+                                   ('', addresses.HEIMDALL_MP[1]), mp_props, 'MP'],
                                    daemon=True)
 
     logger.debug('Starting RCP bridging and greeting service')
