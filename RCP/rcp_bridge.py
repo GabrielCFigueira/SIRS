@@ -20,8 +20,14 @@ class RCP_Bridge(socketserver.BaseRequestHandler):
         Setup connections to both Zeus and Anakin
         """
         logger.info("Connect to zeus and anakin")
-        #self.zeus = socket.create_connection(addresses.ZEUS_RCP)
-        self.anakin = socket.create_connection(addresses.ANAKIN_RCP)
+        try:
+            self.zeus = socket.create_connection(addresses.ZEUS_RCP)
+        except:
+            self.zeus = None
+        try:
+            self.anakin = socket.create_connection(addresses.ANAKIN_RCP)
+        except:
+            self.anakin = None
         logger.debug("Connected")
 
 
@@ -42,6 +48,10 @@ class RCP_Bridge(socketserver.BaseRequestHandler):
                 self.request.shutdown(socket.SHUT_RD)
                 self.request.sendall(bytes("Invalid command: ", 'utf-8') + raw_request)
                 return # For cleanup
+
+            if not destination:
+                logger.warn('Request "%s" for unconnected destination', raw_request)
+                return
 
             logger.info('Request "%s" for %s', rest, destination.getpeername())
 
@@ -69,10 +79,16 @@ class RCP_Bridge(socketserver.BaseRequestHandler):
 
     def finish(self):
         logger.info("{}: End request bridging".format(self.client_address[0]))
-        #self.zeus.sendall(b'quit')
-        #self.zeus.close()
-        self.anakin.sendall(b'quit')
-        self.anakin.close()
+        try:
+            self.zeus.sendall(b'quit')
+            self.zeus.close()
+        except:
+            pass
+        try:
+            self.anakin.sendall(b'quit')
+            self.anakin.close()
+        except:
+            pass
 
 if __name__ == "__main__":
 

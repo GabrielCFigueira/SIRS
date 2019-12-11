@@ -108,7 +108,7 @@ if __name__ == '__main__':
     # Run a thread to serve RCP Greeter (SSH pubkey exchange)
     heimdal_rcp_g = threading.Thread(target=run_a_server,
                                    args=[rcp_greeter.RCP_Greeter,
-                                   addresses.HEIMDALL_RCP_G, {}, 'RCP_G'],
+                                   ('', addresses.HEIMDALL_RCP_G[1]), {}, 'RCP_G'],
                                    daemon=True)
 
     # Run a thread to serve MP
