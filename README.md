@@ -15,13 +15,15 @@ Requirements for packer:
 
 To run:
 
-$ packer build <file.json>
+`packer build <file.json>`
 
 In case you suspect the build is stalling, we can always open a vnc connection, using the random port chosen by packer. For example:
 
-$ vncviewer localhost:<port>
+`vncviewer localhost:<port>`
 
 ## Image deployment
+
+GUIDE STARTS HERE:
 
 The images are available in this link: <link>
 PLatform used was VMware Workstation 15.
@@ -64,3 +66,8 @@ Run this command in Thanos:
 Here, choose the CPU tab, and pick "Copy CPU host configuration"
 
 After this, reboot thanos and see if you can ping Anakin (it boots automatically with Thanos)
+
+## Other
+
+Suricata web configuration page can be accessed at its WAN IP, port 80. Credentials are admin and admin. This port is open for demonstration purposes.
+
