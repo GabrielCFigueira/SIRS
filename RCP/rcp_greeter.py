@@ -25,7 +25,7 @@ class RCP_Greeter(socketserver.BaseRequestHandler):
         """
         Generate ephemeral key
         """
-        logger.info("Connection received from ¯\_(ツ)_/¯")
+        logger.info("Connection received from (-_-)")
         logger.debug('Generating Fernet key')
         session_key = Fernet.generate_key()
         self.f = Fernet(session_key)

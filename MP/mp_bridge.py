@@ -41,7 +41,7 @@ class MP_Bridge(socketserver.BaseRequestHandler):
         Setup connections to both Zeus and Anakin
         """
         global arch_public_key
-        logger.info("Connection received from ¯\_(ツ)_/¯")
+        logger.info("Connection received from (-_-)")
 
         # FIXME need to get cert from common location, and cannot be static
         if hasattr(self.server, 'public_key_getter'):

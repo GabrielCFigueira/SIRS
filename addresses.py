@@ -7,7 +7,7 @@ ARCHITECT='192.168.1.2'
 ZEUS='zeus'
 ANAKIN='anakin'
 THANOS='thanos'
-HEIMDALL='heimdall'
+HEIMDALL=''
 
 if not VMs:
     ARCHITECT = ZEUS = ANAKIN = THANOS = HEIMDALL = '127.1'
