@@ -5,7 +5,7 @@ import socket, socketserver
 import time, datetime
 import logging, logging.config
 import addresses
-from RCP import rcp_bridge
+from RCP import rcp_bridge, rcp_greeter
 from MP import mp_bridge
 from CP import cp_utils
 
@@ -105,6 +105,12 @@ if __name__ == '__main__':
                                    addresses.HEIMDALL_RCP, {}, 'RCP'],
                                    daemon=True)
 
+    # Run a thread to serve RCP Greeter (SSH pubkey exchange)
+    heimdal_rcp_g = threading.Thread(target=run_a_server,
+                                   args=[rcp_greeter.RCP_Greeter,
+                                   addresses.HEIMDALL_RCP_G, {}, 'RCP_G'],
+                                   daemon=True)
+
     # Run a thread to serve MP
     mp_props = {'public_key_getter': (lambda: careful_getter('MP'))}
     heimdal_mp = threading.Thread(target=run_a_server,
@@ -112,8 +118,9 @@ if __name__ == '__main__':
                                    addresses.HEIMDALL_MP, mp_props, 'MP'],
                                    daemon=True)
 
-    logger.debug('Starting RCP bridging service')
+    logger.debug('Starting RCP bridging and greeting service')
     heimdal_rcp.start()
+    heimdal_rcp_g.start()
     logger.debug('Starting MP bridging service')
     heimdal_mp.start()
     #input("Press enter to kill them all")
