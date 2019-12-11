@@ -65,8 +65,9 @@ class MP_Server(socketserver.BaseRequestHandler):
             result = self.f.decrypt(enc_result)
             logger.debug('Got %s as result', result)
 
-            query_res = result.decode('utf-8').strip()
-            logger.info('Received status update: %s', query_res)
+            query_res = result.decode('utf-8').strip().split('|')
+            for res in query_res:
+                logger.info('Received status update: %s', res)
 
             query = (lambda: 'brakes|oil|speed')()
             enc_query = self.f.encrypt(bytes(query, 'utf-8'))

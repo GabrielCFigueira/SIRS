@@ -98,7 +98,8 @@ class MP_Bridge(socketserver.BaseRequestHandler):
                     enc_response = self.arch.recv(size_response)
                     response = self.f.decrypt(enc_response)
                     logger.debug('Got %s as response', response)
-                    self.request.sendall(response)
+                    bin_mess = len(response).to_bytes(8, 'big') + response
+                    self.request.sendall(bin_mess)
 
 
     def finish(self):
@@ -158,7 +159,7 @@ def session_key_exchange(self):
 def thread_session_key_refresher(self):
     while True:
         session_key_exchange(self)
-        time.sleep(5)
+        time.sleep(5000)
 
 class ThreadingMP_Bridge(socketserver.ThreadingMixIn, MP_Bridge):
     pass

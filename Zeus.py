@@ -5,7 +5,7 @@ import socket
 import time, datetime
 import logging, logging.config
 import addresses
-from UP import up_client
+#from UP import up_client
 from CP import cp_utils
 
 logging.config.fileConfig('logging.conf')
@@ -28,7 +28,7 @@ name_lock_sockets = {}
 cert_store = {'UP': [threading.Lock(), None]}
 
 UPDATE_SLEEP = 30
-MONOTORING_SLEEP = 30
+MONOTORING_SLEEP = 8
 RETRY_FAILURES = 5
 RETRY_SLEEP = 0.2
 CHUNK_SIZE = 4096
@@ -116,40 +116,36 @@ def thread_dispatch_rcp():
 def thread_what_mp():
     logger = logging.getLogger('ZEUS_MP')
     conn = socket.create_connection(addresses.HEIMDALL_MP)
-    while True:
-        conn.sendall(b'zeus|what')
-        response = conn.recv(16)
-        logger.info('Got %s', response)
-        time.sleep(MONOTORING_SLEEP)
-    """
-    logger = logging.getLogger('ZEUS_MP')
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect(addresses.ZEUS_MP)
+    #while True:
+    try:
         while True:
-            logger.info('Sending an MP what')
-            s.sendall(b'zeus|what')
+            conn.sendall(b'zeus|what')
+
+            size_result = int.from_bytes(conn.recv(8), 'big')
+            the_query = conn.recv(size_result).decode('utf-8').strip()
+            logger.debug('Got "%s" on the pipe', the_query)
+            if the_query == 'quit':
+                break
+            try:
+                query_vec = the_query.split("|")
+            except Exception:
+                conn.sendall(b'Bad format')
+                continue
+            for name in query_vec:
+                if name not in name_lock_sockets:
+                    conn.sendall(b'Dummy not found')
+                    break #continue
+                lock = name_lock_sockets[name][0]
+                with lock:
+                    s = name_lock_sockets[name][1]
+                    s.sendall(b'read')
+                    response = s.recv(256) + b'|'
+                logger.debug('Responding with "%s"', response)
+                conn.sendall(response)
+
             time.sleep(MONOTORING_SLEEP)
-    ""
-
-
-
-            ""
-                logger.debug('%s -- version: %s', name, dummy_version)
-                file_name = 'Dummies/{}.py'.format(name) # FIXME: not general
-                proc, port = dummy_processes[name]
-                res = up_client.try_update(dummy_id,
-                                           dummy_version,
-                                           file_name,
-                                           lambda: shutdown_dummy(s,proc),
-                                           logger=logger)
-                logger.debug('Return value: %s', res)
-                if res[1] == True: # There was an update
-                    logger.info('Dummy "%s" needs to be restarted', name)
-                    num += 1
-                    start_dummy(my_dummies[port], port)
-    """
-    logger.info('Sent what message to heimdall')
-    time.sleep(MONOTORING_SLEEP)
+    except BrokenPipeError:
+        logger.warning('%s disconnected without "quit"', addr)
 
 
 def thread_dummy_update():
@@ -274,9 +270,9 @@ if __name__ == '__main__':
     cp.start()
 
     # UP
-    logger.info('Starting Update Protocol thread')
+    """logger.info('Starting Update Protocol thread')
     up = threading.Thread(target=thread_dummy_update, args=[], daemon=True)
-    up.start()
+    up.start()"""
 
 
     # RCP #todo refactorize this to use the thread for everything?
