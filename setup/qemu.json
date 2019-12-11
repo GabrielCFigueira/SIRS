@@ -1,0 +1,47 @@
+{
+  "builders": [
+    {
+      "boot_command": [
+        "<tab> text ks=http://{{.HTTPIP}}:{{.HTTPPort}}/ks.cfg <enter><wait>"
+      ],
+      "boot_wait": "10s",
+      "communicator": "ssh",
+      "cpus": "1",
+      "disk_size": "5000",
+      "format": "qcow2",
+      "accelerator": "kvm",
+      "disk_interface": "virtio",
+      "net_device": "virtio-net",
+      "headless": "true",
+      "http_directory": ".",
+      "http_port_min": "8000",
+      "http_port_max": "9000",
+      "iso_checksum": "9a2c47d97b9975452f7d582264e9fc16d108ed8252ac6816239a3b58cef5c53d",
+      "iso_checksum_type": "sha256",
+      "iso_url": "http://ftp.dei.uc.pt/pub/linux/CentOS/7.7.1908/isos/x86_64/CentOS-7-x86_64-Minimal-1908.iso",
+      "iso_target_extension": "iso",
+      "memory": "824",
+      "name": "CentOS",
+      "shutdown_command": "poweroff",
+      "shutdown_timeout": "5m",
+      "ssh_username" : "root",
+      "ssh_password" : "root",
+      "ssh_timeout" : "40m",
+      "ssh_host_port_min" : 10000,
+      "ssh_host_port_max" : 11000,
+      "type": "qemu",
+      "vm_name": "packer-CentOS-VM",
+      "vnc_port_min": "5900",
+      "vnc_port_max": "6000",
+      "vnc_bind_address": "0.0.0.0"
+    }
+  ],
+  "provisioners": [
+    {
+	"type": "shell",
+	"scripts": [
+	   "scripts/install.sh"
+	 ]
+    }	
+  ]
+}
