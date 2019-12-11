@@ -6,7 +6,7 @@ class Temp(GenericDummy.GenericDummy):
     def __init__(self):
         super(Temp, self).__init__()
         self.version = '01000000000001010000000000000000'
-        self.id = 'tempankn'
+        self.id = 'tempanakin'
         self.name = 'temp'
         self.port = 5022
 

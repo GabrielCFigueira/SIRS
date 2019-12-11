@@ -69,7 +69,7 @@ class MP_Server(socketserver.BaseRequestHandler):
             for res in query_res:
                 logger.info('Received status update: %s', res)
 
-            query = (lambda: 'brakes|oil|speed')()
+            query = (lambda: 'oil|temp')()
             enc_query = self.f.encrypt(bytes(query, 'utf-8'))
             bin_mess = (len(enc_query)).to_bytes(8, 'big') + enc_query
             self.request.sendall(bin_mess)

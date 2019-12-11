@@ -132,7 +132,7 @@ def thread_what_mp():
             for name in query_vec:
                 if name not in name_lock_sockets:
                     conn.sendall(b'Dummy not found')
-                    break #continue
+                    continue
                 lock = name_lock_sockets[name][0]
                 with lock:
                     s = name_lock_sockets[name][1]

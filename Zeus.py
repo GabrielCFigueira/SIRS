@@ -5,7 +5,7 @@ import socket
 import time, datetime
 import logging, logging.config
 import addresses
-#from UP import up_client
+from UP import up_client
 from CP import cp_utils
 
 logging.config.fileConfig('logging.conf')
@@ -134,7 +134,7 @@ def thread_what_mp():
             for name in query_vec:
                 if name not in name_lock_sockets:
                     conn.sendall(b'Dummy not found')
-                    break #continue
+                    continue
                 lock = name_lock_sockets[name][0]
                 with lock:
                     s = name_lock_sockets[name][1]
@@ -270,9 +270,9 @@ if __name__ == '__main__':
     cp.start()
 
     # UP
-    """logger.info('Starting Update Protocol thread')
+    logger.info('Starting Update Protocol thread')
     up = threading.Thread(target=thread_dummy_update, args=[], daemon=True)
-    up.start()"""
+    up.start()
 
 
     # RCP #todo refactorize this to use the thread for everything?
