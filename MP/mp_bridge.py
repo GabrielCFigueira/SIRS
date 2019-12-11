@@ -6,7 +6,7 @@ import time
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.hazmat.primitives.serialization import PublicFormat
@@ -20,6 +20,11 @@ logger = logging.getLogger('HEIMDALL_MP')
 
 d = {"anakin":["brakes"], "zeus":["oil"]} # d = {"anakin":["radio"], "zeus":["brakes", "oil"]}
 
+encryption_padding =  padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                      )
 
 
 class MP_Bridge(socketserver.BaseRequestHandler):
@@ -33,7 +38,6 @@ class MP_Bridge(socketserver.BaseRequestHandler):
         """
         Setup connections to both Zeus and Anakin
         """
-        """
         global arch_public_key
         logger.info("Connection received from ¯\_(ツ)_/¯")
 
@@ -41,13 +45,11 @@ class MP_Bridge(socketserver.BaseRequestHandler):
         if hasattr(self.server, 'public_key_getter'):
             self.server.public_key = self.server.public_key_getter()
         if hasattr(self.server, 'public_key'):
-            arch_public_key = self.server.public_key
+            self.arch_public_key = self.server.public_key
         else:
-            logger.critical('Connection received but no private key available')
-            raise Exception("Missing private key")
-        """
-        import pdb
-        #pdb.set_trace()
+            logger.critical('Connection received but no public key available')
+            raise Exception("Missing public key")
+
         logger.info("Connect to architect")
 
         self.arch = socket.create_connection(('localhost', 7891))
@@ -111,9 +113,8 @@ def session_key_exchange(self):
         session_key = Fernet.generate_key()
         f_temp = Fernet(session_key)
         logger.debug('Generated')
-        #session_key_enc = arch_public_key.encrypt(session_key)
-        session_key_enc = session_key
-        print(session_key_enc)
+        #session_key_enc = session_key
+        session_key_enc = self.arch_public_key.encrypt(session_key, encryption_padding)
 
         self.arch.sendall(b'key')
         self.arch.sendall(session_key_enc)

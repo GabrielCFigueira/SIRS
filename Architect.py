@@ -4,7 +4,7 @@ import threading
 import logging,logging.config
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.hazmat.primitives.serialization import Encoding
 from CP.cp_configuration import private_key # generation of private key here
 from CP import cp_utils, cp_server
@@ -44,9 +44,10 @@ if __name__ == '__main__':
     with open('up_cert.pem', 'wb') as outfile:
         outfile.write(up_certificate.public_bytes(Encoding.PEM))
 
-
-    mp_priv_key = ec.generate_private_key(
-        ec.SECP384R1(), default_backend()
+    mp_priv_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+        backend=default_backend()
     )
     mp_pub_key = mp_priv_key.public_key()
     mp_certificate = cp_utils.create_child_cert(private_key,
@@ -60,7 +61,7 @@ if __name__ == '__main__':
 
 
     crl, rev_certs = cp_utils.create_crl(private_key, 'Architect Root CA',
-                                         [up_certificate])
+                                         [up_certificate, mp_certificate])
 
     with open('crl.pem', 'wb') as outfile:
         outfile.write(crl.public_bytes(Encoding.PEM))
@@ -92,20 +93,34 @@ if __name__ == '__main__':
     logger.info("Starting MP server")
     logger.debug("Start 15 sec sleep before issuing new cert")
     #time.sleep(15)
-    input('Press enter for new UP certificate')
+    input('Press enter for new UP and MP certificates')
     # TODO command line controls
-    up_priv_key2 = ec.generate_private_key(
+    up_priv_key = ec.generate_private_key(
         ec.SECP384R1(), default_backend()
     )
-    up_pub_key2 = up_priv_key.public_key()
-    up_certificate2 = cp_utils.create_child_cert(private_key,
+    up_pub_key = up_priv_key.public_key()
+    up_certificate = cp_utils.create_child_cert(private_key,
                                                 'Architect Root CA',
-                                                up_pub_key2,
+                                                up_pub_key,
                                                 'Architect UP',
                                             ['digital_signature'])
     with open('up_cert.pem', 'wb') as outfile:
-        outfile.write(up_certificate2.public_bytes(Encoding.PEM))
-    logger.debug("Issued new UP cert")
+        outfile.write(up_certificate.public_bytes(Encoding.PEM))
+    mp_priv_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+        backend=default_backend()
+    )
+    mp_pub_key = mp_priv_key.public_key()
+    mp_certificate = cp_utils.create_child_cert(private_key,
+                                                'Architect Root CA',
+                                                mp_pub_key,
+                                                'Architect MP',
+                                            ['key_encipherment'])
+
+    with open('mp_cert.pem', 'wb') as outfile:
+        outfile.write(mp_certificate.public_bytes(Encoding.PEM))
+    logger.debug("Issued new UP and MP certs")
 
 
     certificate_server.join()

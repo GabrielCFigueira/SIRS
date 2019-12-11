@@ -11,12 +11,15 @@ import pdb
 import os
 
 
-#logging.config.fileConfig('logging.conf')
+logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('ARCHITECT_MP')
 
-chosen_hash = hashes.SHA256()
-sign_alg = ec.ECDSA(hashes.SHA256())
-
+private_key=None
+encryption_padding =  padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                      )
 
 class MP_Server(socketserver.BaseRequestHandler):
     """
@@ -43,9 +46,7 @@ class MP_Server(socketserver.BaseRequestHandler):
         # collecting results
         collect = True
         while collect:
-            print('Waiting for results/key exchanges')
-
-
+            logger.debug('Waiting for results/key exchanges')
             what = self.request.recv(3)
             import pdb
             #pdb.set_trace()
@@ -56,13 +57,12 @@ class MP_Server(socketserver.BaseRequestHandler):
                 continue
             if what == b'qit':
                 return
-            
+
             size_result = int.from_bytes(self.request.recv(8), 'big')
             print(size_result)
             enc_result = self.request.recv(size_result)
             result = self.f.decrypt(enc_result)
             logger.debug('Got %s as result', result)
-            
 
             query_res = result.decode('utf-8').strip()
             logger.info('Received status update: %s', query_res)
@@ -79,10 +79,9 @@ class MP_Server(socketserver.BaseRequestHandler):
 
 def session_key_exchange(heimdall_socket):
     logger.debug('Getting new session key')
-    session_key_enc = heimdall_socket.recv(44)
-    #session_key = private_key.decrypt(session_key_enc)
-    session_key = session_key_enc
-    print(session_key)
+    session_key_enc = heimdall_socket.recv(256)
+    #session_key = session_key_enc
+    session_key = private_key.decrypt(session_key_enc, encryption_padding)
 
     #create challenge!!!
     f_temp = Fernet(session_key)

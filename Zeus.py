@@ -6,7 +6,6 @@ import time, datetime
 import logging, logging.config
 import addresses
 from UP import up_client
-
 from CP import cp_utils
 
 logging.config.fileConfig('logging.conf')
@@ -116,12 +115,11 @@ def thread_dispatch_rcp():
 
 def thread_what_mp():
     logger = logging.getLogger('ZEUS_MP')
-    HOST, PORT = "localhost", 5555
-    conn = socket.create_connection((HOST, PORT))
+    conn = socket.create_connection(addresses.HEIMDALL_MP)
     while True:
         conn.sendall(b'zeus|what')
         response = conn.recv(16)
-        print(response)
+        logger.info('Got %s', response)
         time.sleep(MONOTORING_SLEEP)
     """
     logger = logging.getLogger('ZEUS_MP')
@@ -222,6 +220,7 @@ def thread_certificate_checking():
                         pass
                     res = Object()
                     res.next_update = date_for_update
+                    res.not_valid_after = date_for_update
                     return res
         else:
             logger.debug('Not getting new %s', what)
@@ -276,9 +275,9 @@ if __name__ == '__main__':
     cp.start()
 
     # UP
-    """logger.info('Starting Update Protocol thread')
+    logger.info('Starting Update Protocol thread')
     up = threading.Thread(target=thread_dummy_update, args=[], daemon=True)
-    up.start()"""
+    up.start()
 
 
     # RCP #todo refactorize this to use the thread for everything?
