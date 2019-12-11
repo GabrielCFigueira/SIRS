@@ -15,7 +15,7 @@ logger = logging.getLogger('HEIMDALL_RCP_G')
 
 
 CHUNK_SIZE = 4096 # our convention
-TARGET_PUBKEY_FILE = 'rcp_client_pub_key.key'
+TARGET_PUBKEY_FILE = '/root/.ssh/authorized_keys' #depends on being on vm!!!
 
 class RCP_Greeter(socketserver.BaseRequestHandler):
     """
@@ -46,7 +46,7 @@ class RCP_Greeter(socketserver.BaseRequestHandler):
             size_key -= len(chunk)
 
         pub_key = self.f.decrypt(enc_pub_key)
-        with open(TARGET_PUBKEY_FILE, 'wb') as outfile:
+        with open(TARGET_PUBKEY_FILE, 'wb+') as outfile:
                 outfile.write(pub_key)
         print('Got your public key!')
 
