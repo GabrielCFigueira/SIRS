@@ -5,7 +5,7 @@ import socket
 import time, datetime
 import logging, logging.config
 import addresses
-#from UP import up_client
+from UP import up_client
 from CP import cp_utils
 
 logging.config.fileConfig('logging.conf')
@@ -270,7 +270,7 @@ if __name__ == '__main__':
     # UP
     logger.info('Starting Update Protocol thread')
     up = threading.Thread(target=thread_dummy_update, args=[], daemon=True)
-    #up.start()
+    up.start()
 
 
     # RCP #todo refactorize this to use the thread for everything?

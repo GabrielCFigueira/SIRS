@@ -69,7 +69,7 @@ class RCP_Bridge(socketserver.BaseRequestHandler):
             if dest == 'anakin':
                 dest = self.anakin
             else:
-                dest = self.anakin #self.zeus
+                dest = self.zeus
 
             return dest, rest
 

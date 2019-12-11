@@ -3,7 +3,7 @@ import GenericDummy
 class Radio(GenericDummy.GenericDummy):
     def __init__(self):
         self.state = 'on' #hack, do not do try this at home
-        super(Brakes, self).__init__()
+        super(Radio, self).__init__()
         self.version = '00100000000000000000000000000000'
         self.id = 'radioankin'
         self.name = 'radio'
